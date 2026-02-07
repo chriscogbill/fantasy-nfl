@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(psql:*)",
+      "Bash(pg_dump:*)",
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(chmod:*)",
+      "Bash(npx create-next-app:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(node createUsers.js:*)",
+      "Bash(lsof:*)",
+      "Bash(python3:*)",
+      "Bash(node createAdminUser.js:*)",
+      "Bash(node resetAdminPassword.js:*)",
+      "Bash(xargs kill:*)",
+      "Bash(npm start)",
+      "Bash(find:*)",
+      "WebFetch(domain:site.api.espn.com)",
+      "Bash(node scripts/importNflFixtures.js:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node -e:*)",
+      "Bash(pgrep:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

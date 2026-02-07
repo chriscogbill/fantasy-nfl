@@ -1,0 +1,30 @@
+{
+  "name": "fantasy-nfl-api",
+  "version": "1.0.0",
+  "description": "Fantasy NFL Salary Cap API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "import:stats": "node importStats.js",
+    "calc:prices": "node calculatePrices.js",
+    "generate:sample": "node generateSampleData.js"
+  },
+  "keywords": [
+    "fantasy",
+    "nfl",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.22.1",
+    "express-session": "^1.18.2",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.16.3"
+  }
+}

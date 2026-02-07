@@ -1,0 +1,212 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary brand color (currently near-black grey) - used for links, primary buttons, active states */
+  --color-primary-50: #f5f5f5;
+  --color-primary-100: #e5e5e5;
+  --color-primary-200: #d4d4d4;
+  --color-primary-300: #a3a3a3;
+  --color-primary-400: #737373;
+  --color-primary-500: #525252;
+  --color-primary-600: #2d2d2d;
+  --color-primary-700: #1f1f1f;
+  --color-primary-800: #171717;
+  --color-primary-900: #0a0a0a;
+
+  /* Positive color (green) - used for money, positive values, success states */
+  --color-positive-50: #f2faf4;
+  --color-positive-100: #dff3e6;
+  --color-positive-200: #c0e6ce;
+  --color-positive-300: #91d2a8;
+  --color-positive-400: #5bb87d;
+  --color-positive-500: #369b5a;
+  --color-positive-600: #288249;
+  --color-positive-700: #22693c;
+  --color-positive-800: #1d5432;
+  --color-positive-900: #174328;
+
+  /* Link color (grey-blue) - used for text links (not buttons) */
+  --color-link-50: #f0f5fa;
+  --color-link-100: #dae4f0;
+  --color-link-200: #b8cce0;
+  --color-link-300: #8fadc9;
+  --color-link-400: #6a91b5;
+  --color-link-500: #4d78a0;
+  --color-link-600: #3a6490;
+  --color-link-700: #2d5078;
+  --color-link-800: #234060;
+  --color-link-900: #1a3048;
+
+  /* Danger/error color (red) - used for errors, deletions, warnings */
+  --color-danger-50: #fef3f3;
+  --color-danger-100: #fce4e4;
+  --color-danger-200: #f9caca;
+  --color-danger-300: #f3a1a1;
+  --color-danger-400: #e87070;
+  --color-danger-500: #d54848;
+  --color-danger-600: #b83030;
+  --color-danger-700: #9a2626;
+  --color-danger-800: #7f2121;
+  --color-danger-900: #6a1f1f;
+
+  /* ============================================
+     POSITION COLORS - Separate from theme colors
+     These are for player position badges/labels
+     ============================================ */
+
+  /* QB - Red */
+  --color-pos-qb-100: #fee2e2;
+  --color-pos-qb-800: #991b1b;
+
+  /* RB - Green */
+  --color-pos-rb-100: #dcfce7;
+  --color-pos-rb-800: #166534;
+
+  /* WR - Blue */
+  --color-pos-wr-100: #dbeafe;
+  --color-pos-wr-800: #1e40af;
+
+  /* TE - Purple */
+  --color-pos-te-100: #f3e8ff;
+  --color-pos-te-800: #6b21a8;
+
+  /* K - Yellow */
+  --color-pos-k-100: #fef9c3;
+  --color-pos-k-800: #854d0e;
+
+  /* DEF - Gray */
+  --color-pos-def-100: #f3f4f6;
+  --color-pos-def-800: #1f2937;
+
+  /* FLEX - Orange (for lineup slots) */
+  --color-pos-flex-100: #ffedd5;
+  --color-pos-flex-800: #9a3412;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer;
+  }
+
+  .btn-primary:hover {
+    @apply bg-primary-700;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-gray-300;
+  }
+
+  .btn-success {
+    @apply bg-positive-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer;
+  }
+
+  .btn-success:hover {
+    @apply bg-positive-700;
+  }
+
+  .btn-danger {
+    @apply bg-danger-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer;
+  }
+
+  .btn-danger:hover {
+    @apply bg-danger-700;
+  }
+
+  .card {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    padding: 1.5rem;
+    transition: box-shadow 0.2s;
+  }
+
+  .card:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  }
+
+  .stat-box {
+    text-align: center;
+    padding: 1rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+  }
+
+  /* Text colors using theme */
+  .text-link {
+    @apply text-link-600 hover:text-link-700 hover:underline;
+  }
+
+  .text-success {
+    @apply text-positive-600;
+  }
+
+  .text-money {
+    @apply text-positive-600 font-bold;
+  }
+
+  .text-value {
+    @apply text-primary-600 font-bold;
+  }
+
+  /* Position badge classes */
+  .pos-qb {
+    background-color: var(--color-pos-qb-100);
+    color: var(--color-pos-qb-800);
+  }
+  .pos-rb {
+    background-color: var(--color-pos-rb-100);
+    color: var(--color-pos-rb-800);
+  }
+  .pos-wr {
+    background-color: var(--color-pos-wr-100);
+    color: var(--color-pos-wr-800);
+  }
+  .pos-te {
+    background-color: var(--color-pos-te-100);
+    color: var(--color-pos-te-800);
+  }
+  .pos-k {
+    background-color: var(--color-pos-k-100);
+    color: var(--color-pos-k-800);
+  }
+  .pos-def {
+    background-color: var(--color-pos-def-100);
+    color: var(--color-pos-def-800);
+  }
+  .pos-flex {
+    background-color: var(--color-pos-flex-100);
+    color: var(--color-pos-flex-800);
+  }
+
+  /* Position border classes (for lineup page) */
+  .pos-border-qb {
+    border-color: color-mix(in srgb, var(--color-pos-qb-800) 30%, transparent);
+  }
+  .pos-border-rb {
+    border-color: color-mix(in srgb, var(--color-pos-rb-800) 30%, transparent);
+  }
+  .pos-border-wr {
+    border-color: color-mix(in srgb, var(--color-pos-wr-800) 30%, transparent);
+  }
+  .pos-border-te {
+    border-color: color-mix(in srgb, var(--color-pos-te-800) 30%, transparent);
+  }
+  .pos-border-k {
+    border-color: color-mix(in srgb, var(--color-pos-k-800) 30%, transparent);
+  }
+  .pos-border-def {
+    border-color: color-mix(in srgb, var(--color-pos-def-800) 30%, transparent);
+  }
+  .pos-border-flex {
+    border-color: color-mix(in srgb, var(--color-pos-flex-800) 30%, transparent);
+  }
+}
+
+body {
+  background-color: #f9fafb;
+  color: #111827;
+}
