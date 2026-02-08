@@ -8,7 +8,7 @@ A full-stack Fantasy NFL salary cap management game where users build NFL fantas
 | Layer | Technology |
 |-------|------------|
 | Backend | Node.js + Express.js (Port 3000) |
-| Frontend | Next.js 14 + React 19 (Port 3001) |
+| Frontend | Next.js 16 + React 19 (Port 3001) |
 | Database | PostgreSQL with PL/pgSQL functions |
 | Styling | Tailwind CSS 4 |
 | Data Source | Sleeper API (NFL stats) |
@@ -17,38 +17,51 @@ A full-stack Fantasy NFL salary cap management game where users build NFL fantas
 ## Project Structure
 
 ```
-fantasy-nfl-import/
-├── backend/
-│   ├── server.js                 # Express entry point
-│   ├── src/
-│   │   ├── db/connection.js      # PostgreSQL connection pool
-│   │   └── routes/
-│   │       ├── players.js        # Player search & stats
-│   │       ├── teams.js          # Team CRUD & rosters
-│   │       ├── leagues.js        # League management
-│   │       ├── transfers.js      # Trade execution
-│   │       ├── auth.js           # Authentication
-│   │       └── settings.js       # System settings
-│   ├── schema.sql                # Database schema
-│   └── scripts/
-│       ├── importStats.js        # Import from Sleeper API
-│       ├── calculatePrices.js    # Dynamic pricing
-│       └── generateSampleData.js # Test data
+fantasy-nfl/
+├── server.js                     # Express entry point
+├── schema.sql                    # Database schema (13 tables, 11 PL/pgSQL functions)
+├── src/
+│   ├── db/connection.js          # PostgreSQL connection pool
+│   └── routes/
+│       ├── players.js            # Player search & stats
+│       ├── teams.js              # Team CRUD & rosters
+│       ├── leagues.js            # League management
+│       ├── transfers.js          # Trade execution
+│       ├── auth.js               # Authentication
+│       └── settings.js           # System settings (admin only for writes)
+├── importStats.js                # Import from Sleeper API
+├── calculatePrices.js            # Dynamic pricing algorithm
+├── generateSampleData.js         # Test data generation
+├── createAdminUser.js            # Admin user creation script
+├── createUsers.js                # Batch user creation script
+├── resetAdminPassword.js         # Admin password reset
+├── scripts/
+│   └── importNflFixtures.js      # NFL schedule import
 ├── frontend/
 │   ├── app/
+│   │   ├── layout.js             # Root layout (AuthProvider + Navigation)
 │   │   ├── page.js               # Home dashboard
-│   │   ├── players/page.js       # Player search
-│   │   ├── teams/[id]/
-│   │   │   ├── page.js           # Team detail
-│   │   │   ├── lineup/page.js    # Set starting lineup
-│   │   │   └── transfers/page.js # Trade management
-│   │   └── leagues/[id]/page.js  # League standings
+│   │   ├── login/page.js         # Login form
+│   │   ├── register/page.js      # Registration form
+│   │   ├── players/page.js       # Player search & browse
+│   │   ├── teams/
+│   │   │   ├── page.js           # All teams list (admin)
+│   │   │   ├── create/page.js    # Create team form
+│   │   │   └── [id]/
+│   │   │       ├── page.js       # Team points view
+│   │   │       ├── lineup/page.js    # Set starting lineup
+│   │   │       ├── points/page.js    # Points breakdown
+│   │   │       └── transfers/page.js # Trade management + auto-pick
+│   │   └── leagues/
+│   │       ├── page.js           # League browser
+│   │       ├── create/page.js    # Create league form
+│   │       └── [id]/page.js      # League standings & history
 │   ├── components/
-│   │   ├── Navigation.js
-│   │   └── PlayerStatsModal.js
+│   │   ├── Navigation.js         # Nav bar + admin week/year/day controls
+│   │   └── PlayerStatsModal.js   # Position-specific stats for 18 weeks
 │   └── lib/
-│       ├── api.js                # API client
-│       └── AuthContext.js        # Auth context
+│       ├── api.js                # API client class
+│       └── AuthContext.js        # Auth context + team ID resolution
 ```
 
 ## Game Rules
@@ -91,8 +104,10 @@ cd frontend && npm run dev  # Dev server on 3001
 ## Database
 
 - **Database name**: fantasyNFL
-- **Key tables**: players, player_current_prices, player_stats, teams, rosters, transfers, leagues, league_entries
-- **Key functions**: calculate_transfer_impact(), get_available_players(), get_lineup_with_points()
+- **Key tables**: players, player_stats, player_current_prices, player_price_history, player_scores (view), teams, rosters, transfers, leagues, league_entries, league_standings, nfl_fixtures, scoring, scoring_sections, roster_constraints, users, app_settings
+- **Key view**: `player_scores` - Computed view that cross-joins `player_stats` with `scoring` rules to calculate fantasy points per format (PPR, standard, etc.). This is the core scoring engine.
+- **Key functions**: calculate_transfer_impact(), get_available_players(), get_lineup_with_points(), get_league_standings(), get_league_history(), set_starting_lineup(), validate_roster(), copy_all_rosters_to_next_week()
+- **Indexes**: 12 indexes on common query patterns (rosters by team/week, standings, fixtures, price history)
 
 ## Recent Work
 
@@ -147,6 +162,22 @@ cd frontend && npm run dev  # Dev server on 3001
 - [x] Style future weeks in a different theme color to distinguish from played weeks - DONE
 - [x] During preseason, all weeks should show as "future" (fixtures only, no stats) - DONE
 - [ ] Create player_team_history table to track which team a player was on each week (independent of stats). Currently, weeks without stats fall back to the player's current team, which may be incorrect if the player changed teams mid-season. This would allow accurate opponent display even for weeks where a player didn't record stats.
+
+### Security (from codebase analysis)
+- [ ] Add authorization middleware to verify the logged-in user owns the team they're modifying (currently any user can execute transfers, modify lineups, etc. for any team)
+- [ ] Move hardcoded session secret (`fantasy-nfl-secret-key-change-in-production` in server.js) to environment variable
+- [ ] Move DB credentials to environment variables (currently hardcoded in connection.js, calculatePrices.js, importStats.js with `user: 'chriscogbill'`, empty password)
+- [ ] Add rate limiting on login endpoint and other sensitive routes to prevent brute-force attacks
+- [ ] Stop exposing internal error messages to clients (`error.message` is returned directly in API responses)
+- [ ] Add a persistent session store (currently uses in-memory store which won't scale and loses sessions on restart)
+
+### Code Quality (from codebase analysis)
+- [ ] Remove hardcoded `season = 2024` across the codebase (~20 places in frontend and some backend routes) - should use the `current_season` setting instead
+- [ ] Decompose transfers/page.js (1,117 lines) into smaller components (e.g., separate auto-pick, player list, roster display)
+- [ ] Consolidate duplicate DB pool configurations (connection.js, calculatePrices.js, importStats.js each create their own pool) - scripts should import from connection.js
+- [ ] Leverage Next.js SSR/SSG where appropriate (currently all pages use `'use client'` with no server-side rendering)
+- [ ] Add test coverage (no tests exist in the codebase)
+- [ ] Add the `users` table definition to schema.sql (currently missing - table is referenced by routes but not in the schema file)
 
 ### To Test / Check
 - [ ] Validate that entering an incorrect league code gives an error
