@@ -3,15 +3,7 @@
 // Creates test leagues, teams, and rosters
 // ============================================
 
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  user: 'chriscogbill',
-  host: 'localhost',
-  database: 'fantasyNFL',
-  password: '',
-  port: 5432,
-});
+const pool = require('./src/db/connection');
 
 const SEASON = 2024;
 const START_WEEK = 1;

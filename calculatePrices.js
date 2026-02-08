@@ -3,15 +3,7 @@
 // Calculates initial prices based on performance
 // ============================================
 
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  user: 'chriscogbill',
-  host: 'localhost',
-  database: 'fantasyNFL',
-  password: '',
-  port: 5432,
-});
+const pool = require('./src/db/connection');
 
 // Position pricing multipliers to balance different positions
 const POSITION_MULTIPLIERS = {

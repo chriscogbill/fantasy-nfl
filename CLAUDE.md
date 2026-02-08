@@ -166,7 +166,7 @@ cd frontend && npm run dev  # Dev server on 3001
 ### Security (from codebase analysis)
 - [ ] Add authorization middleware to verify the logged-in user owns the team they're modifying (currently any user can execute transfers, modify lineups, etc. for any team)
 - [ ] Move hardcoded session secret (`fantasy-nfl-secret-key-change-in-production` in server.js) to environment variable
-- [ ] Move DB credentials to environment variables (currently hardcoded in connection.js, calculatePrices.js, importStats.js with `user: 'chriscogbill'`, empty password)
+- [ ] Move DB credentials to environment variables (currently hardcoded in connection.js with `user: 'chriscogbill'`, empty password)
 - [ ] Add rate limiting on login endpoint and other sensitive routes to prevent brute-force attacks
 - [ ] Stop exposing internal error messages to clients (`error.message` is returned directly in API responses)
 - [ ] Add a persistent session store (currently uses in-memory store which won't scale and loses sessions on restart)
@@ -174,7 +174,7 @@ cd frontend && npm run dev  # Dev server on 3001
 ### Code Quality (from codebase analysis)
 - [ ] Remove hardcoded `season = 2024` across the codebase (~20 places in frontend and some backend routes) - should use the `current_season` setting instead
 - [ ] Decompose transfers/page.js (1,117 lines) into smaller components (e.g., separate auto-pick, player list, roster display)
-- [ ] Consolidate duplicate DB pool configurations (connection.js, calculatePrices.js, importStats.js each create their own pool) - scripts should import from connection.js
+- [x] Consolidate duplicate DB pool configurations - DONE: calculatePrices.js, importStats.js, generateSampleData.js, createUsers.js now all import from src/db/connection.js instead of creating their own pools
 - [ ] Leverage Next.js SSR/SSG where appropriate (currently all pages use `'use client'` with no server-side rendering)
 - [ ] Add test coverage (no tests exist in the codebase)
 - [x] Add the `users` and `app_settings` table definitions to schema.sql - DONE: Both were missing from the pg_dump; added with sequences, PKs, and unique constraints

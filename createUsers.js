@@ -1,13 +1,5 @@
 const bcrypt = require('bcrypt');
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  user: 'chriscogbill',
-  host: 'localhost',
-  database: 'fantasyNFL',
-  password: '',
-  port: 5432,
-});
+const pool = require('./src/db/connection');
 
 async function createUsers() {
   const users = [

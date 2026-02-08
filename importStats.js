@@ -5,19 +5,7 @@
 // npm install pg node-fetch
 // ============================================
 
-const { Pool } = require('pg');
-
-// ============================================
-// Database Configuration
-// ============================================
-
-const pool = new Pool({
-  user: 'chriscogbill',
-  host: 'localhost',
-  database: 'fantasyNFL',
-  password: '',                   // Leave empty for Postgres.app
-  port: 5432,
-});
+const pool = require('./src/db/connection');
 
 // ============================================
 // Sleeper Provider (simplified version)
