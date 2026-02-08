@@ -131,7 +131,7 @@ cd frontend && npm run dev  # Dev server on 3001
 ## TODO
 
 ### Admin Features
-- [ ] Add 'Player Prices' admin page with ability to increase/decrease a player price by 0.1 on a specific day
+- [x] Add 'Player Prices' admin page with ability to increase/decrease a player price by 0.1 on a specific day - DONE: Added `/players/prices` admin page with +/- 0.1 buttons, season/week/day selectors, player search/filter. Backend: `PUT /api/players/:id/price` endpoint updates `player_current_prices` and records in `player_price_history` with day column. Added `day` column to `player_price_history` schema. Nav link added for admins.
 
 ### New User Experience
 - [x] If user signs in without a team, hide transfers, lineup, and points menus - FIXED

@@ -109,9 +109,12 @@ export default function Navigation() {
     { href: '/players', label: 'Players' }
   );
 
-  // Add Teams link only for admins
+  // Add admin-only links
   if (user?.role === 'admin') {
-    navItems.push({ href: '/teams', label: 'Teams' });
+    navItems.push(
+      { href: '/players/prices', label: 'Prices' },
+      { href: '/teams', label: 'Teams' }
+    );
   }
 
   return (

@@ -49,6 +49,13 @@ class ApiClient {
     return this.request(`/api/players/top/${position}?${query}`);
   }
 
+  async updatePlayerPrice(id, data) {
+    return this.request(`/api/players/${id}/price`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Teams
   async getTeams(params = {}) {
     const query = new URLSearchParams(params).toString();

@@ -322,4 +322,99 @@ router.get('/top/:position', async (req, res) => {
   }
 });
 
+// Middleware to check if user is admin
+function requireAdmin(req, res, next) {
+  if (!req.session.userId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Not authenticated'
+    });
+  }
+
+  if (req.session.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      error: 'Admin access required'
+    });
+  }
+
+  next();
+}
+
+// PUT /api/players/:id/price - Adjust player price (admin only)
+router.put('/:id/price', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const { id } = req.params;
+    const { change, season, week, day } = req.body;
+
+    if (change === undefined || !season || !week || !day) {
+      return res.status(400).json({
+        success: false,
+        error: 'change, season, week, and day are required'
+      });
+    }
+
+    const priceChange = parseFloat(change);
+    if (isNaN(priceChange) || priceChange === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'change must be a non-zero number'
+      });
+    }
+
+    await client.query('BEGIN');
+
+    // Get current price
+    const currentResult = await client.query(
+      `SELECT current_price FROM player_current_prices WHERE player_id = $1 AND season = $2`,
+      [id, season]
+    );
+
+    if (currentResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        error: 'Player price not found for this season'
+      });
+    }
+
+    const oldPrice = parseFloat(currentResult.rows[0].current_price);
+    const newPrice = Math.max(4.5, Math.round((oldPrice + priceChange) * 10) / 10);
+
+    // Update current price
+    await client.query(
+      `UPDATE player_current_prices
+       SET current_price = $1, manual_override = true, last_updated = CURRENT_TIMESTAMP
+       WHERE player_id = $2 AND season = $3`,
+      [newPrice, id, season]
+    );
+
+    // Record in price history
+    await client.query(
+      `INSERT INTO player_price_history (player_id, price, price_change, change_reason, week, day, season)
+       VALUES ($1, $2, $3, 'admin_manual', $4, $5, $6)`,
+      [id, newPrice, priceChange, week, day, season]
+    );
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `Price updated from $${oldPrice.toFixed(1)}M to $${newPrice.toFixed(1)}M`,
+      player_id: parseInt(id),
+      old_price: oldPrice,
+      new_price: newPrice,
+      change: priceChange
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error updating player price:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;

@@ -900,6 +900,7 @@ CREATE TABLE public.player_price_history (
     price_change numeric(10,1) DEFAULT 0,
     change_reason character varying(50),
     week integer,
+    day integer,
     season integer NOT NULL,
     "timestamp" timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
