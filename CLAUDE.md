@@ -177,7 +177,7 @@ cd frontend && npm run dev  # Dev server on 3001
 - [ ] Consolidate duplicate DB pool configurations (connection.js, calculatePrices.js, importStats.js each create their own pool) - scripts should import from connection.js
 - [ ] Leverage Next.js SSR/SSG where appropriate (currently all pages use `'use client'` with no server-side rendering)
 - [ ] Add test coverage (no tests exist in the codebase)
-- [ ] Add the `users` table definition to schema.sql (currently missing - table is referenced by routes but not in the schema file)
+- [x] Add the `users` and `app_settings` table definitions to schema.sql - DONE: Both were missing from the pg_dump; added with sequences, PKs, and unique constraints
 
 ### To Test / Check
 - [ ] Validate that entering an incorrect league code gives an error

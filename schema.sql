@@ -1375,6 +1375,54 @@ ALTER SEQUENCE public.transfers_transfer_id_seq OWNED BY public.transfers.transf
 
 
 --
+-- Name: users; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.users (
+    user_id integer NOT NULL,
+    email character varying(255) NOT NULL,
+    username character varying(100) NOT NULL,
+    password_hash character varying(255) NOT NULL,
+    full_name character varying(255),
+    role character varying(20) DEFAULT 'user'::character varying,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    last_login timestamp without time zone
+);
+
+
+--
+-- Name: users_user_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.users_user_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: users_user_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.users_user_id_seq OWNED BY public.users.user_id;
+
+
+--
+-- Name: app_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.app_settings (
+    setting_key character varying(100) NOT NULL,
+    setting_value character varying(255),
+    description text,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+--
 -- Name: league_entries entry_id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1463,6 +1511,13 @@ ALTER TABLE ONLY public.teams ALTER COLUMN team_id SET DEFAULT nextval('public.t
 --
 
 ALTER TABLE ONLY public.transfers ALTER COLUMN transfer_id SET DEFAULT nextval('public.transfers_transfer_id_seq'::regclass);
+
+
+--
+-- Name: users user_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users ALTER COLUMN user_id SET DEFAULT nextval('public.users_user_id_seq'::regclass);
 
 
 --
@@ -1663,6 +1718,38 @@ ALTER TABLE ONLY public.transfers
 
 ALTER TABLE ONLY public.players
     ADD CONSTRAINT unique_player_name_position UNIQUE (name, "position");
+
+
+--
+-- Name: app_settings app_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.app_settings
+    ADD CONSTRAINT app_settings_pkey PRIMARY KEY (setting_key);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (user_id);
+
+
+--
+-- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_email_key UNIQUE (email);
+
+
+--
+-- Name: users users_username_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_username_key UNIQUE (username);
 
 
 --
