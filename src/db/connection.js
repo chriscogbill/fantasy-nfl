@@ -2,11 +2,11 @@ const { Pool } = require('pg');
 
 // Database connection pool
 const pool = new Pool({
-  user: 'chriscogbill',
-  host: 'localhost',
-  database: 'fantasyNFL',
-  password: '',
-  port: 5432,
+  user: process.env.DB_USER || 'chriscogbill',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_NAME || 'fantasyNFL',
+  password: process.env.DB_PASSWORD || '',
+  port: parseInt(process.env.DB_PORT || '5432'),
   max: 20, // Maximum number of connections in pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,

@@ -165,8 +165,8 @@ cd frontend && npm run dev  # Dev server on 3001
 
 ### Security (from codebase analysis)
 - [ ] Add authorization middleware to verify the logged-in user owns the team they're modifying (currently any user can execute transfers, modify lineups, etc. for any team)
-- [ ] Move hardcoded session secret (`fantasy-nfl-secret-key-change-in-production` in server.js) to environment variable
-- [ ] Move DB credentials to environment variables (currently hardcoded in connection.js with `user: 'chriscogbill'`, empty password)
+- [x] Move hardcoded session secret to environment variable - DONE: server.js now reads `SESSION_SECRET` from env with fallback
+- [x] Move DB credentials to environment variables - DONE: connection.js now reads `DB_USER`, `DB_HOST`, `DB_NAME`, `DB_PASSWORD`, `DB_PORT` from env with fallbacks. Added `.env.example` for reference
 - [ ] Add rate limiting on login endpoint and other sensitive routes to prevent brute-force attacks
 - [ ] Stop exposing internal error messages to clients (`error.message` is returned directly in API responses)
 - [ ] Add a persistent session store (currently uses in-memory store which won't scale and loses sessions on restart)

@@ -26,7 +26,7 @@ app.use(cors({
 
 // Session middleware
 app.use(session({
-  secret: 'fantasy-nfl-secret-key-change-in-production',
+  secret: process.env.SESSION_SECRET || 'fantasy-nfl-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
   cookie: {
