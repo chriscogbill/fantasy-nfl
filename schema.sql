@@ -961,7 +961,8 @@ CREATE TABLE public.player_stats (
     xp_missed integer DEFAULT 0,
     fga integer DEFAULT 0,
     def_td integer DEFAULT 0,
-    points_allowed integer DEFAULT 0
+    points_allowed integer DEFAULT 0,
+    team character varying(10)
 );
 
 
@@ -1416,11 +1417,32 @@ ALTER SEQUENCE public.users_user_id_seq OWNED BY public.users.user_id;
 --
 
 CREATE TABLE public.app_settings (
-    setting_key character varying(100) NOT NULL,
-    setting_value character varying(255),
+    setting_id integer NOT NULL,
+    setting_key character varying(50) NOT NULL,
+    setting_value character varying(255) NOT NULL,
     description text,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
+
+
+--
+-- Name: app_settings_setting_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.app_settings_setting_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: app_settings_setting_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.app_settings_setting_id_seq OWNED BY public.app_settings.setting_id;
 
 
 --
@@ -1722,11 +1744,26 @@ ALTER TABLE ONLY public.players
 
 
 --
+-- Name: app_settings setting_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.app_settings ALTER COLUMN setting_id SET DEFAULT nextval('public.app_settings_setting_id_seq'::regclass);
+
+
+--
 -- Name: app_settings app_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.app_settings
-    ADD CONSTRAINT app_settings_pkey PRIMARY KEY (setting_key);
+    ADD CONSTRAINT app_settings_pkey PRIMARY KEY (setting_id);
+
+
+--
+-- Name: app_settings app_settings_setting_key_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.app_settings
+    ADD CONSTRAINT app_settings_setting_key_key UNIQUE (setting_key);
 
 
 --
