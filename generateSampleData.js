@@ -45,10 +45,10 @@ async function createLeagues() {
   
   for (const league of leagues) {
     const result = await pool.query(
-      `INSERT INTO leagues (league_name, season, max_teams, status, start_week, end_week)
-       VALUES ($1, $2, $3, 'active', $4, 18)
+      `INSERT INTO leagues (league_name, season, status, start_week, end_week)
+       VALUES ($1, $2, 'active', $3, 18)
        RETURNING league_id`,
-      [league.name, SEASON, league.max_teams, START_WEEK]
+      [league.name, SEASON, START_WEEK]
     );
     
     leagueIds.push(result.rows[0].league_id);
@@ -331,7 +331,7 @@ async function showSampleData() {
   const leagues = await pool.query('SELECT * FROM leagues ORDER BY league_id');
   console.log('Leagues:');
   leagues.rows.forEach(l => {
-    console.log(`  - ${l.league_name}: ${l.max_teams} teams`);
+    console.log(`  - ${l.league_name} (${l.status})`);
   });
   
   // Show teams
