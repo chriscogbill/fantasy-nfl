@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
             AND pcp.season = t.season
         ), 0) as current_value
       FROM teams t
-      LEFT JOIN users u ON t.user_email = u.email
+      LEFT JOIN user_profiles u ON t.user_email = u.email
       LEFT JOIN league_entries le ON t.team_id = le.team_id
       LEFT JOIN rosters r ON t.team_id = r.team_id AND r.season = t.season
       WHERE t.season = $1
@@ -158,7 +158,7 @@ router.get('/:id', async (req, res) => {
             AND pcp.season = t.season
         ), 0) as current_value
        FROM teams t
-       LEFT JOIN users u ON t.user_email = u.email
+       LEFT JOIN user_profiles u ON t.user_email = u.email
        LEFT JOIN league_entries le ON t.team_id = le.team_id
        LEFT JOIN rosters r ON t.team_id = r.team_id
        WHERE t.team_id = $1

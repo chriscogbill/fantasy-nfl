@@ -1,10 +1,20 @@
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
+const { Pool } = require('pg');
 const pool = require('./src/db/connection');
 
-// Import routes
-const authRouter = require('./src/routes/auth');
+// Separate pool for the shared auth/session database (cogsAuth)
+const authPool = new Pool({
+  user: process.env.DB_USER || 'chriscogbill',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.AUTH_DB_NAME || 'cogsAuth',
+  password: process.env.DB_PASSWORD || '',
+  port: parseInt(process.env.DB_PORT || '5432'),
+});
+
+// Import routes (auth is handled by the cogs-auth service)
 const playersRouter = require('./src/routes/players');
 const teamsRouter = require('./src/routes/teams');
 const leaguesRouter = require('./src/routes/leagues');
@@ -19,26 +29,64 @@ const PORT = process.env.PORT || 3000;
 // ============================================
 
 // Enable CORS for all routes with credentials
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3001,http://localhost:3002').split(',');
 app.use(cors({
-  origin: 'http://localhost:3001',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (server-to-server, curl, etc.)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
-// Session middleware
+// Session middleware with shared PostgreSQL store (cogsAuth database)
+const cookieConfig = {
+  secure: process.env.NODE_ENV === 'production',
+  httpOnly: true,
+  sameSite: 'lax',
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+};
+
+// Set cookie domain for cross-subdomain sharing (production only)
+if (process.env.COOKIE_DOMAIN) {
+  cookieConfig.domain = process.env.COOKIE_DOMAIN;
+}
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'fantasy-nfl-secret-key-change-in-production',
+  store: new pgSession({
+    pool: authPool,
+    tableName: 'session',
+    createTableIfMissing: true
+  }),
+  secret: process.env.SESSION_SECRET || 'cogs-shared-session-secret-change-in-production',
   resave: false,
   saveUninitialized: false,
-  cookie: {
-    secure: false, // Set to true in production with HTTPS
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
+  cookie: cookieConfig
 }));
 
 // Parse JSON request bodies
 app.use(express.json());
+
+// Lazy sync: ensure authenticated users have a profile in the local user_profiles table
+app.use(async (req, res, next) => {
+  if (req.session?.userId && req.session?.email) {
+    try {
+      await pool.query(
+        `INSERT INTO user_profiles (user_id, email, username, full_name)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (email) DO UPDATE SET username = EXCLUDED.username, full_name = EXCLUDED.full_name`,
+        [req.session.userId, req.session.email, req.session.username || req.session.email, null]
+      );
+    } catch (err) {
+      // Non-critical - log but don't block the request
+      console.error('User profile sync error:', err.message);
+    }
+  }
+  next();
+});
 
 // Request logging with session info
 app.use((req, res, next) => {
@@ -85,8 +133,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// Mount API routes
-app.use('/api/auth', authRouter);
+// Mount API routes (auth handled by cogs-auth service on port 3002)
 app.use('/api/players', playersRouter);
 app.use('/api/teams', teamsRouter);
 app.use('/api/leagues', leaguesRouter);
@@ -154,5 +201,6 @@ app.listen(PORT, async () => {
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, closing server...');
   await pool.end();
+  await authPool.end();
   process.exit(0);
 });

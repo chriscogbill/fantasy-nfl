@@ -1,25 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
-
-// Middleware to check if user is admin
-function requireAdmin(req, res, next) {
-  if (!req.session.userId) {
-    return res.status(401).json({
-      success: false,
-      error: 'Not authenticated'
-    });
-  }
-
-  if (req.session.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      error: 'Admin access required'
-    });
-  }
-
-  next();
-}
+const { requireAdmin } = require('../middleware/requireAuth');
 
 // GET /api/settings - Get all settings
 router.get('/', async (req, res) => {

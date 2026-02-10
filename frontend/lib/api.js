@@ -1,7 +1,9 @@
 // API Client for Fantasy NFL Backend
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const AUTH_BASE_URL = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002';
 
 class ApiClient {
+  // Request to the Fantasy NFL backend
   async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
 
@@ -153,29 +155,55 @@ class ApiClient {
     });
   }
 
-  // Auth
+  // Auth - requests go to the shared auth service
+  async authRequest(endpoint, options = {}) {
+    const url = `${AUTH_BASE_URL}${endpoint}`;
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Auth request failed');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Auth Error:', error);
+      throw error;
+    }
+  }
+
   async register(email, username, password) {
-    return this.request('/api/auth/register', {
+    return this.authRequest('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, username, password }),
     });
   }
 
   async login(email, password) {
-    return this.request('/api/auth/login', {
+    return this.authRequest('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
   }
 
   async logout() {
-    return this.request('/api/auth/logout', {
+    return this.authRequest('/api/auth/logout', {
       method: 'POST',
     });
   }
 
   async getCurrentUser() {
-    return this.request('/api/auth/me');
+    return this.authRequest('/api/auth/me');
   }
 
   // Settings

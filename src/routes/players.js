@@ -322,24 +322,7 @@ router.get('/top/:position', async (req, res) => {
   }
 });
 
-// Middleware to check if user is admin
-function requireAdmin(req, res, next) {
-  if (!req.session.userId) {
-    return res.status(401).json({
-      success: false,
-      error: 'Not authenticated'
-    });
-  }
-
-  if (req.session.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      error: 'Admin access required'
-    });
-  }
-
-  next();
-}
+const { requireAdmin } = require('../middleware/requireAuth');
 
 // PUT /api/players/:id/price - Adjust player price (admin only)
 router.put('/:id/price', requireAdmin, async (req, res) => {

@@ -267,7 +267,7 @@ BEGIN
             t.current_spent as roster_value
         FROM league_standings ls
         JOIN teams t ON ls.team_id = t.team_id
-        LEFT JOIN users u ON t.user_email = u.email
+        LEFT JOIN user_profiles u ON t.user_email = u.email
         WHERE ls.league_id = p_league_id
             AND ls.week = p_week
             AND ls.season = p_season
@@ -285,7 +285,7 @@ BEGIN
             t.current_spent as roster_value
         FROM league_entries le
         JOIN teams t ON le.team_id = t.team_id
-        LEFT JOIN users u ON t.user_email = u.email
+        LEFT JOIN user_profiles u ON t.user_email = u.email
         WHERE le.league_id = p_league_id
             AND t.season = p_season
         ORDER BY t.team_name;
@@ -1443,6 +1443,22 @@ CREATE SEQUENCE public.app_settings_setting_id_seq
 --
 
 ALTER SEQUENCE public.app_settings_setting_id_seq OWNED BY public.app_settings.setting_id;
+
+
+--
+-- Name: user_profiles; Type: TABLE; Schema: public; Owner: -
+-- Lightweight copy of user data from the shared cogsAuth database.
+-- Used for JOINs (e.g., displaying manager names). Synced lazily by the backend.
+--
+
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+    user_id integer NOT NULL,
+    email character varying(255) NOT NULL,
+    username character varying(100) NOT NULL,
+    full_name character varying(255),
+    CONSTRAINT user_profiles_pkey PRIMARY KEY (user_id),
+    CONSTRAINT user_profiles_email_key UNIQUE (email)
+);
 
 
 --
