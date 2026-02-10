@@ -644,9 +644,11 @@ export default function TransfersPage() {
         </div>
       )}
 
-      <Link href={`/teams/${teamId}`} className="text-link-600 hover:text-link-700 hover:underline">
-        ← Back to Team
-      </Link>
+      {roster.length > 0 && (
+        <Link href={`/teams/${teamId}`} className="text-link-600 hover:text-link-700 hover:underline">
+          ← Back to Team
+        </Link>
+      )}
 
       <div className="card">
         <div className="flex justify-between items-start mb-4">
@@ -762,9 +764,9 @@ export default function TransfersPage() {
                   <span className="font-bold text-gray-700">${parseFloat(team.remaining_budget).toFixed(1)}M</span>
                 </div>
                 <div>
-                  <span className="text-gray-600">Change: </span>
+                  <span className="text-gray-600">{roster.length === 0 ? 'Spending: ' : 'Change: '}</span>
                   <span className={`font-bold ${(preview.moneyNeeded - preview.moneyFreed) > 0 ? 'text-danger-600' : 'text-positive-600'}`}>
-                    {(preview.moneyNeeded - preview.moneyFreed) > 0 ? '-' : '+'}${Math.abs(preview.moneyNeeded - preview.moneyFreed).toFixed(1)}M
+                    {roster.length === 0 ? '' : ((preview.moneyNeeded - preview.moneyFreed) > 0 ? '-' : '+')}${Math.abs(preview.moneyNeeded - preview.moneyFreed).toFixed(1)}M
                   </span>
                 </div>
                 <div>
@@ -818,9 +820,15 @@ export default function TransfersPage() {
             {roster.length === 0 ? 'Select players to add to your roster' : 'Select players to buy or sell'}
           </div>
         ) : preview && !preview.positionValid ? (
-          <div className="bg-danger-100 border border-danger-400 text-danger-700 px-3 py-2 rounded text-sm">
-            ❌ {preview.missingPositions}
-          </div>
+          roster.length === 0 ? (
+            <div className="bg-yellow-50 border border-yellow-400 text-yellow-800 px-3 py-2 rounded text-sm">
+              ⚠ {preview.missingPositions}
+            </div>
+          ) : (
+            <div className="bg-danger-100 border border-danger-400 text-danger-700 px-3 py-2 rounded text-sm">
+              ❌ {preview.missingPositions}
+            </div>
+          )
         ) : preview && !preview.isAffordable ? (
           <div className="bg-danger-100 border border-danger-400 text-danger-700 px-3 py-2 rounded text-sm">
             ❌ Not enough budget!
@@ -939,9 +947,11 @@ export default function TransfersPage() {
                         </div>
                         <div className="w-8"></div>
                         <div className="text-center w-16">
-                          <div className="text-xs text-gray-500 mb-1">Total Pts</div>
+                          <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${season - 1} Pts` : 'Total Pts'}</div>
                           <div className="text-sm font-semibold text-gray-700">
-                            {player.season_total ? parseFloat(player.season_total).toFixed(1) : '-'}
+                            {currentWeek === 'Preseason'
+                              ? (player.prev_season_total ? parseFloat(player.prev_season_total).toFixed(1) : '0')
+                              : (player.season_total ? parseFloat(player.season_total).toFixed(1) : '-')}
                           </div>
                         </div>
                         <div className="w-8"></div>
@@ -964,9 +974,11 @@ export default function TransfersPage() {
                         </div>
                         <div className="w-8"></div>
                         <div className="text-center w-16">
-                          <div className="text-xs text-gray-500 mb-1">Total Pts</div>
+                          <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${season - 1} Pts` : 'Total Pts'}</div>
                           <div className="text-sm font-semibold text-gray-700">
-                            {player.season_total ? parseFloat(player.season_total).toFixed(1) : '-'}
+                            {currentWeek === 'Preseason'
+                              ? (player.prev_season_total ? parseFloat(player.prev_season_total).toFixed(1) : '0')
+                              : (player.season_total ? parseFloat(player.season_total).toFixed(1) : '-')}
                           </div>
                         </div>
                         <div className="w-8"></div>
@@ -1062,7 +1074,7 @@ export default function TransfersPage() {
         {filteredPlayers.length === 0 ? (
           <div className="text-gray-500">No players found</div>
         ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-[600px] overflow-y-auto">
             {filteredPlayers.map((player) => (
               <div
                 key={player.player_id}
@@ -1106,9 +1118,11 @@ export default function TransfersPage() {
                   </div>
                   <div className="w-8"></div>
                   <div className="text-center w-16">
-                    <div className="text-xs text-gray-500 mb-1">Total Pts</div>
+                    <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${season - 1} Pts` : 'Total Pts'}</div>
                     <div className="text-sm font-semibold text-gray-700">
-                      {player.season_total ? parseFloat(player.season_total).toFixed(1) : '-'}
+                      {currentWeek === 'Preseason'
+                        ? (player.prev_season_total ? parseFloat(player.prev_season_total).toFixed(1) : '0')
+                        : (player.season_total ? parseFloat(player.season_total).toFixed(1) : '-')}
                     </div>
                   </div>
                   <div className="w-8"></div>

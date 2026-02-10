@@ -137,7 +137,7 @@ $$;
 -- Name: get_available_players(integer, character varying, numeric, numeric, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_available_players(p_season integer DEFAULT 2024, p_position character varying DEFAULT NULL::character varying, p_min_price numeric DEFAULT NULL::numeric, p_max_price numeric DEFAULT NULL::numeric, p_search_name character varying DEFAULT NULL::character varying, p_current_week character varying DEFAULT 'Preseason') RETURNS TABLE(player_id integer, player_name character varying, player_position character varying, player_team character varying, current_price numeric, avg_points numeric, season_total numeric, fixture_week_1 character varying, fixture_week_2 character varying, fixture_week_3 character varying)
+CREATE FUNCTION public.get_available_players(p_season integer DEFAULT 2024, p_position character varying DEFAULT NULL::character varying, p_min_price numeric DEFAULT NULL::numeric, p_max_price numeric DEFAULT NULL::numeric, p_search_name character varying DEFAULT NULL::character varying, p_current_week character varying DEFAULT 'Preseason') RETURNS TABLE(player_id integer, player_name character varying, player_position character varying, player_team character varying, current_price numeric, avg_points numeric, season_total numeric, prev_season_total numeric, fixture_week_1 character varying, fixture_week_2 character varying, fixture_week_3 character varying)
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -171,6 +171,13 @@ BEGIN
             WHEN p_current_week = 'Preseason' THEN 0.0
             ELSE ROUND(SUM(ps.total_points), 2)
         END as season_total,
+        -- Previous season total points (for preseason display)
+        (SELECT ROUND(SUM(prev_ps.total_points), 2)
+         FROM player_scores prev_ps
+         WHERE prev_ps.player_id = p.player_id
+           AND prev_ps.season = p_season - 1
+           AND prev_ps.league_format = 'ppr'
+        ) as prev_season_total,
         -- Next 3 fixtures (add @ if away)
         (SELECT CASE
             WHEN f1.home_team = p.team THEN f1.away_team

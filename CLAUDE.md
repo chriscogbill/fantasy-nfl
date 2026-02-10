@@ -145,12 +145,12 @@ cd frontend && npm run dev  # Dev server on 3001
 - [ ] Security audit (check for vulnerabilities, secure API endpoints, input validation, etc.)
 
 ### Build Your Roster Screen
-- [ ] Remove 'Back to Team' page link (not needed for initial team selection)
-- [ ] Make 'Welcome! Let's build your team' smaller or match width of team value/budget boxes below, or remove boxes entirely for initial selection
-- [ ] Make available players section vertically bigger before scrolling through it
-- [ ] Error message shouldn't show in red with cross when first selecting players (implies they've done something wrong). Should be yellow without allowing transfers to be completed
-- [ ] 'Change' should be 'Spending' for first selection
-- [ ] Total points should be replaced by previous year points during preseason (as total points is 0 at that point). For rookies, show 0
+- [x] Remove 'Back to Team' page link (not needed for initial team selection) - DONE: Hidden when roster is empty
+- [x] Make 'Welcome! Let's build your team' smaller or match width of team value/budget boxes below, or remove boxes entirely for initial selection - KEPT AS-IS (user happy with current design)
+- [x] Make available players section vertically bigger before scrolling through it - DONE: Increased max-h from 384px to 600px
+- [x] Error message shouldn't show in red with cross when first selecting players - DONE: Shows yellow warning style during initial roster selection, red only for existing roster transfers
+- [x] 'Change' should be 'Spending' for first selection - DONE: Label shows "Spending" when roster is empty, "Change" otherwise
+- [x] Total points should be replaced by previous year points during preseason - DONE: Imported 2023 stats from Sleeper API, added `prev_season_total` to `get_available_players()`, shows "{year} Pts" during preseason (0 for rookies)
 - [x] Fix players currently showing on wrong teams - RESOLVED: Removed team_2024 column (was redundant). Now using `players.team` (current team from Sleeper API) for display, and `player_stats.team` for per-game opponent tracking. Note: During backtesting, players show their current real-world team, not their historical team - this is expected behavior
 
 ### Set Lineup Page
@@ -169,12 +169,12 @@ cd frontend && npm run dev  # Dev server on 3001
 - [x] Move DB credentials to environment variables - DONE: connection.js now reads `DB_USER`, `DB_HOST`, `DB_NAME`, `DB_PASSWORD`, `DB_PORT` from env with fallbacks. Added `.env.example` for reference
 - [ ] Add rate limiting on login endpoint and other sensitive routes to prevent brute-force attacks
 - [ ] Stop exposing internal error messages to clients (`error.message` is returned directly in API responses)
-- [ ] Add a persistent session store (currently uses in-memory store which won't scale and loses sessions on restart)
+- [x] Add a persistent session store (currently uses in-memory store which won't scale and loses sessions on restart) - DONE: Using connect-pg-simple with PostgreSQL session table in cogsAuth database
 
 ### Multi-Site / Subdomain Architecture
 - [ ] Configure session cookies at parent domain level (e.g., `.cogs.tech`) to share authentication across subdomains
-- [ ] Set up shared persistent session store (Redis or PostgreSQL) accessible by all apps
-- [ ] Consider extracting auth into a shared service or shared database for users table
+- [x] Set up shared persistent session store (Redis or PostgreSQL) accessible by all apps - DONE: PostgreSQL session store in cogsAuth database shared across apps
+- [x] Consider extracting auth into a shared service or shared database for users table - DONE: Created cogs-auth service on port 3002 with dedicated cogsAuth database
 - [ ] Potential subdomains: fantasynfl.cogs.tech, plpicker.cogs.tech, chris.cogs.tech
 
 ### Code Quality (from codebase analysis)
