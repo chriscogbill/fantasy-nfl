@@ -139,6 +139,7 @@ cd frontend && npm run dev  # Dev server on 3001
 
 ### Features
 - [ ] Add manager history (track previous team owners)
+- [ ] Add advertising placement areas on the website (ad slots for monetisation)
 
 ### Deployment
 - [ ] Make the app accessible online (deploy to hosting platform)
