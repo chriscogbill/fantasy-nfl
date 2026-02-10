@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '../../../../lib/api';
 import { useAuth } from '../../../../lib/AuthContext';
@@ -10,8 +10,10 @@ import PlayerStatsModal from '../../../../components/PlayerStatsModal';
 export default function TransfersPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const teamId = params.id;
   const { user, loading: authLoading, refreshUserTeam } = useAuth();
+  const buyPlayerProcessed = useRef(false);
 
   const [team, setTeam] = useState(null);
   const [roster, setRoster] = useState([]);
@@ -103,6 +105,25 @@ export default function TransfersPage() {
       }
     }
   }, [playersToSell, roster]);
+
+  // Auto-select player from buyPlayer URL param (from Player Stats page)
+  useEffect(() => {
+    if (buyPlayerProcessed.current) return;
+    const buyPlayerParam = searchParams.get('buyPlayer');
+    if (!buyPlayerParam || availablePlayers.length === 0) return;
+
+    const buyPlayerId = parseInt(buyPlayerParam);
+    const player = availablePlayers.find(p => p.player_id === buyPlayerId);
+    const alreadyInRoster = roster.find(p => p.player_id === buyPlayerId);
+
+    if (player && !alreadyInRoster && !playersToBuy.includes(buyPlayerId)) {
+      setPlayersToBuy(prev => [...prev, buyPlayerId]);
+    }
+
+    buyPlayerProcessed.current = true;
+    // Remove the query param from URL to prevent re-triggering
+    router.replace(`/teams/${teamId}/transfers`, { scroll: false });
+  }, [availablePlayers, roster, searchParams, teamId, router, playersToBuy]);
 
   async function fetchData() {
     setLoading(true);

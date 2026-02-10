@@ -9,7 +9,7 @@ import { useAuth } from '../lib/AuthContext';
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout, userTeamId } = useAuth();
+  const { user, logout, userTeamId, teamRosterComplete } = useAuth();
   const [currentWeek, setCurrentWeek] = useState(null);
   const [currentYear, setCurrentYear] = useState(null);
   const [currentDay, setCurrentDay] = useState(null);
@@ -97,18 +97,26 @@ export default function Navigation() {
 
   // Add team management links if user has a team
   if (userTeamId) {
-    navItems.push(
-      { href: `/teams/${userTeamId}`, label: 'Points' },
-      { href: `/teams/${userTeamId}/transfers`, label: 'Transfers' },
-      { href: `/teams/${userTeamId}/lineup`, label: 'Lineup' }
-    );
+    if (teamRosterComplete) {
+      // Full roster - show all team management options
+      navItems.push(
+        { href: `/teams/${userTeamId}`, label: 'Points' },
+        { href: `/teams/${userTeamId}/transfers`, label: 'Transfers' },
+        { href: `/teams/${userTeamId}/lineup`, label: 'Lineup' }
+      );
+    } else {
+      // Roster incomplete - only show Buy Players
+      navItems.push(
+        { href: `/teams/${userTeamId}/transfers`, label: 'Buy Players' }
+      );
+    }
   }
 
-  // Add general navigation
-  navItems.push(
-    { href: '/leagues', label: 'Leagues' },
-    { href: '/players', label: 'Players' }
-  );
+  // Add general navigation (Leagues hidden until roster is complete)
+  if (!userTeamId || teamRosterComplete) {
+    navItems.push({ href: '/leagues', label: 'Leagues' });
+  }
+  navItems.push({ href: '/players', label: 'Player Stats' });
 
   // Admin menu items (separate from main nav)
   const adminItems = [

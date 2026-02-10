@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userTeamId, setUserTeamId] = useState(null);
+  const [teamRosterComplete, setTeamRosterComplete] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -20,6 +21,7 @@ export function AuthProvider({ children }) {
       loadUserTeam();
     } else {
       setUserTeamId(null);
+      setTeamRosterComplete(false);
     }
   }, [user]);
 
@@ -29,12 +31,15 @@ export function AuthProvider({ children }) {
       const myTeam = data.teams?.find(t => t.user_email === user?.email);
       if (myTeam) {
         setUserTeamId(myTeam.team_id);
+        setTeamRosterComplete(parseInt(myTeam.roster_count) >= 15);
       } else {
         setUserTeamId(null);
+        setTeamRosterComplete(false);
       }
     } catch (error) {
       console.error('Error loading user team:', error);
       setUserTeamId(null);
+      setTeamRosterComplete(false);
     }
   }
 
@@ -76,7 +81,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, checkAuth, userTeamId, refreshUserTeam }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, checkAuth, userTeamId, teamRosterComplete, refreshUserTeam }}>
       {children}
     </AuthContext.Provider>
   );

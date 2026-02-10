@@ -1,9 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api } from '../../lib/api';
+import { useAuth } from '../../lib/AuthContext';
 
 export default function PlayersPage() {
+  const { user, userTeamId } = useAuth();
+  const showBuyButton = user && userTeamId;
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -158,6 +162,7 @@ export default function PlayersPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr>
+                {showBuyButton && <th className="px-2 py-3 w-10"></th>}
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Player</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Position</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Team</th>
@@ -168,6 +173,19 @@ export default function PlayersPage() {
             <tbody className="divide-y divide-gray-200">
               {players.map((player) => (
                 <tr key={player.player_id} className="hover:bg-gray-50 transition-colors">
+                  {showBuyButton && (
+                    <td className="px-2 py-4 text-center">
+                      <Link
+                        href={`/teams/${userTeamId}/transfers?buyPlayer=${player.player_id}`}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-positive-100 text-positive-700 hover:bg-positive-200 hover:text-positive-800 transition-colors border border-positive-300"
+                        title={`Buy ${player.player_name}`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </Link>
+                    </td>
+                  )}
                   <td className="px-4 py-4">
                     <div className="font-semibold">{player.player_name}</div>
                   </td>

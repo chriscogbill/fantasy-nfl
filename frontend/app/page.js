@@ -88,7 +88,20 @@ export default function Home() {
             </Link>
           </div>
         )}
-        {user && userTeams.length > 0 && (
+        {user && userTeams.length > 0 && parseInt(userTeams[0].roster_count) < 15 && (
+          <div className="bg-primary-50 border border-primary-300 rounded-lg p-6 mb-6 max-w-3xl mx-auto">
+            <p className="text-primary-900 font-semibold mb-2">
+              Welcome, {user.username}!
+            </p>
+            <p className="text-primary-700 text-sm mb-4">
+              Your team <span className="font-semibold">{userTeams[0].team_name}</span> needs players. Select your 15-player squad to get started.
+            </p>
+            <Link href={`/teams/${userTeams[0].team_id}/transfers`} className="btn-primary inline-block text-lg px-8 py-3">
+              Buy Players
+            </Link>
+          </div>
+        )}
+        {user && userTeams.length > 0 && parseInt(userTeams[0].roster_count) >= 15 && (
           <div className="bg-positive-50 border border-positive-300 rounded-lg p-6 mb-6 max-w-3xl mx-auto">
             <p className="text-positive-900 font-semibold mb-2">
               Welcome back, {user.username}!
