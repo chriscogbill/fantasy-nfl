@@ -22,7 +22,11 @@
       "Bash(npm run dev:*)",
       "Bash(node -e:*)",
       "Bash(pgrep:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git merge:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix schema.sql to match actual database structure\n\n- Add team column to player_stats table \\(for tracking player''s team per game\\)\n- Fix app_settings table: add setting_id as primary key with auto-increment\n- Add app_settings_setting_key_key unique constraint\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(pg_isready:*)",
+      "Bash(git fetch:*)"
     ]
   }
 }

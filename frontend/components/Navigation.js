@@ -14,6 +14,7 @@ export default function Navigation() {
   const [currentYear, setCurrentYear] = useState(null);
   const [currentDay, setCurrentDay] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
 
   useEffect(() => {
     loadCurrentSettings();
@@ -109,147 +110,207 @@ export default function Navigation() {
     { href: '/players', label: 'Players' }
   );
 
-  // Add admin-only links
-  if (user?.role === 'admin') {
-    navItems.push(
-      { href: '/players/prices', label: 'Prices' },
-      { href: '/teams', label: 'Teams' }
-    );
-  }
+  // Admin menu items (separate from main nav)
+  const adminItems = [
+    { href: '/players/prices', label: 'Player Prices' },
+    { href: '/teams', label: 'All Teams' }
+  ];
 
   return (
-    <nav className="bg-white shadow-lg border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <Link href="/" className="flex items-center">
-                <img
-                  src="/cogs-fantasy-nfl.svg"
-                  alt="Cogs Fantasy NFL"
-                  className="h-8"
-                />
-              </Link>
-            </div>
-            <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors
-                    ${
-                      pathname === item.href
-                        ? 'border-primary-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }
-                  `}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-6">
-            {user?.role === 'admin' ? (
-              <div className="flex items-center gap-4">
-                {/* Year Selector */}
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-gray-600">Year:</span>
-                  <select
-                    value={currentYear || ''}
-                    onChange={(e) => handleYearChange(e.target.value)}
-                    disabled={isUpdating || currentYear === null}
-                    className="px-2 py-1 border border-gray-300 rounded-md text-sm font-semibold focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100"
-                  >
-                    {currentYear === null ? (
-                      <option value="">Loading...</option>
-                    ) : (
-                      <>
-                        {[2024, 2025, 2026].map((year) => (
-                          <option key={year} value={year}>
-                            {year}
-                          </option>
-                        ))}
-                      </>
-                    )}
-                  </select>
-                </div>
-
-                {/* Week Selector */}
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-gray-600">Week:</span>
-                  <select
-                    value={currentWeek || ''}
-                    onChange={(e) => handleWeekChange(e.target.value)}
-                    disabled={isUpdating || currentWeek === null}
-                    className="px-2 py-1 border border-gray-300 rounded-md text-sm font-semibold focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100"
-                  >
-                    {currentWeek === null ? (
-                      <option value="">Loading...</option>
-                    ) : (
-                      <>
-                        <option value="Preseason">Pre</option>
-                        {Array.from({ length: 18 }, (_, i) => i + 1).map((w) => (
-                          <option key={w} value={w}>
-                            {w}
-                          </option>
-                        ))}
-                      </>
-                    )}
-                  </select>
-                </div>
-
-                {/* Day Selector */}
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-gray-600">Day:</span>
-                  <select
-                    value={currentDay || ''}
-                    onChange={(e) => handleDayChange(e.target.value)}
-                    disabled={isUpdating || currentDay === null}
-                    className="px-2 py-1 border border-gray-300 rounded-md text-sm font-semibold focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100"
-                  >
-                    {currentDay === null ? (
-                      <option value="">Loading...</option>
-                    ) : (
-                      <>
-                        {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </>
-                    )}
-                  </select>
-                </div>
-              </div>
-            ) : currentWeek !== null && (
-              <div className="text-sm text-gray-600">
-                {currentYear && `${currentYear} - `}
-                {currentWeek === 'Preseason' ? 'Preseason' : `Week ${currentWeek}`}
-                {currentWeek !== 'Preseason' && currentDay && ` - Day ${currentDay}`}
-              </div>
-            )}
-
+    <nav className="shadow-lg border-b border-gray-200">
+      {/* Top bar - User info */}
+      <div className="bg-primary-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-end h-8 items-center">
             {user ? (
               <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-700">
-                  Welcome, <span className="font-semibold text-link-600">{user.username}</span>
+                <span className="text-sm text-gray-300">
+                  Welcome, <span className="font-semibold text-white">{user.username}</span>
                 </span>
-                <button onClick={handleLogout} className="text-sm text-primary-600 hover:underline cursor-pointer">
+                <button onClick={handleLogout} className="text-sm text-gray-300 hover:text-white cursor-pointer">
                   Logout
                 </button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Link href="/login" className="text-sm text-primary-600 hover:underline">
+                <Link href="/login" className="text-sm text-gray-300 hover:text-white">
                   Login
                 </Link>
-                <span className="text-gray-400">|</span>
-                <Link href="/register" className="text-sm text-primary-600 hover:underline">
+                <span className="text-gray-500">|</span>
+                <Link href="/register" className="text-sm text-gray-300 hover:text-white">
                   Register
                 </Link>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main navigation bar */}
+      <div className="bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex h-14 justify-between">
+            <div className="flex">
+              <div className="flex-shrink-0 flex items-center">
+                <Link href="/" className="flex items-center">
+                  <img
+                    src="/cogs-fantasy-nfl.svg"
+                    alt="Cogs Fantasy NFL"
+                    className="h-8"
+                  />
+                </Link>
+              </div>
+              <div className="hidden sm:ml-8 sm:flex sm:space-x-8 items-center">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors h-full
+                      ${
+                        pathname === item.href
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }
+                    `}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+
+                {/* Admin dropdown menu - inline with nav items */}
+                {user?.role === 'admin' && (
+                  <div className="relative flex items-center h-full">
+                    <button
+                      onClick={() => setAdminMenuOpen(!adminMenuOpen)}
+                      className={`inline-flex items-center gap-1 px-1 pt-1 border-b-2 text-sm font-medium transition-colors h-full
+                        ${adminMenuOpen || adminItems.some(item => pathname === item.href)
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        }
+                      `}
+                    >
+                      Admin
+                      <svg className={`w-4 h-4 transition-transform ${adminMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Dropdown menu */}
+                    {adminMenuOpen && (
+                      <>
+                        {/* Backdrop to close menu when clicking outside */}
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => setAdminMenuOpen(false)}
+                        />
+                        <div className="absolute left-0 top-full mt-0 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-20">
+                          <div className="py-1">
+                            {adminItems.map((item) => (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => setAdminMenuOpen(false)}
+                                className={`block px-4 py-2 text-sm transition-colors
+                                  ${pathname === item.href
+                                    ? 'bg-primary-50 text-primary-700'
+                                    : 'text-gray-700 hover:bg-gray-100'
+                                  }
+                                `}
+                              >
+                                {item.label}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right side - Year/Week/Day controls */}
+            <div className="flex items-center">
+              {user?.role === 'admin' ? (
+                <div className="flex items-center gap-4">
+                  {/* Year Selector */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-500">Year:</span>
+                    <select
+                      value={currentYear || ''}
+                      onChange={(e) => handleYearChange(e.target.value)}
+                      disabled={isUpdating || currentYear === null}
+                      className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100"
+                    >
+                      {currentYear === null ? (
+                        <option value="">...</option>
+                      ) : (
+                        <>
+                          {[2024, 2025, 2026].map((year) => (
+                            <option key={year} value={year}>
+                              {year}
+                            </option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Week Selector */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-500">Week:</span>
+                    <select
+                      value={currentWeek || ''}
+                      onChange={(e) => handleWeekChange(e.target.value)}
+                      disabled={isUpdating || currentWeek === null}
+                      className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100"
+                    >
+                      {currentWeek === null ? (
+                        <option value="">...</option>
+                      ) : (
+                        <>
+                          <option value="Preseason">Pre</option>
+                          {Array.from({ length: 18 }, (_, i) => i + 1).map((w) => (
+                            <option key={w} value={w}>
+                              {w}
+                            </option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Day Selector */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-500">Day:</span>
+                    <select
+                      value={currentDay || ''}
+                      onChange={(e) => handleDayChange(e.target.value)}
+                      disabled={isUpdating || currentDay === null}
+                      className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100"
+                    >
+                      {currentDay === null ? (
+                        <option value="">...</option>
+                      ) : (
+                        <>
+                          {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  </div>
+                </div>
+              ) : currentWeek !== null && (
+                <div className="text-sm text-gray-600">
+                  {currentYear && `${currentYear} - `}
+                  {currentWeek === 'Preseason' ? 'Preseason' : `Week ${currentWeek}`}
+                  {currentWeek !== 'Preseason' && currentDay && ` - Day ${currentDay}`}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

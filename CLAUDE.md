@@ -171,6 +171,12 @@ cd frontend && npm run dev  # Dev server on 3001
 - [ ] Stop exposing internal error messages to clients (`error.message` is returned directly in API responses)
 - [ ] Add a persistent session store (currently uses in-memory store which won't scale and loses sessions on restart)
 
+### Multi-Site / Subdomain Architecture
+- [ ] Configure session cookies at parent domain level (e.g., `.cogs.tech`) to share authentication across subdomains
+- [ ] Set up shared persistent session store (Redis or PostgreSQL) accessible by all apps
+- [ ] Consider extracting auth into a shared service or shared database for users table
+- [ ] Potential subdomains: fantasynfl.cogs.tech, plpicker.cogs.tech, chris.cogs.tech
+
 ### Code Quality (from codebase analysis)
 - [ ] Remove hardcoded `season = 2024` across the codebase (~20 places in frontend and some backend routes) - should use the `current_season` setting instead
 - [ ] Decompose transfers/page.js (1,117 lines) into smaller components (e.g., separate auto-pick, player list, roster display)
