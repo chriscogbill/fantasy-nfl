@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../lib/AuthContext';
@@ -10,13 +10,27 @@ export default function CreateTeamPage() {
   const [teamName, setTeamName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [currentWeek, setCurrentWeek] = useState(null);
   const { user } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    api.getCurrentWeek().then(setCurrentWeek).catch(() => {});
+  }, []);
 
   // Redirect if not logged in
   if (!user) {
     router.push('/login');
     return null;
+  }
+
+  // Block team creation during Setup
+  if (currentWeek === 'Setup') {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500 text-lg">The season is being prepared. Team creation will open during Preseason.</p>
+      </div>
+    );
   }
 
   async function handleSubmit(e) {

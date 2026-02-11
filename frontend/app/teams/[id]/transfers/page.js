@@ -25,7 +25,7 @@ export default function TransfersPage() {
   // During Preseason, transfers apply to Week 1
   // During regular season, transfers apply to next week
   const transferWeek = currentWeek !== null
-    ? (currentWeek === 'Preseason' ? 1 : currentWeek + 1)
+    ? (currentWeek === 'Setup' || currentWeek === 'Preseason' ? 1 : currentWeek + 1)
     : null;
 
   const [playersToSell, setPlayersToSell] = useState([]);
@@ -579,6 +579,14 @@ export default function TransfersPage() {
 
   if (!team) {
     return <div className="text-center py-12 text-gray-500">Team not found</div>;
+  }
+
+  if (currentWeek === 'Setup') {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500 text-lg">The season is being prepared. Team selection will open during Preseason.</p>
+      </div>
+    );
   }
 
   const positionColors = {

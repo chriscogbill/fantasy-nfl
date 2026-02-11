@@ -95,12 +95,15 @@ export default function Navigation() {
   // Home is always first
   navItems.push({ href: '/', label: 'Home' });
 
-  // Add team management links if user has a team
-  if (userTeamId) {
+  // Add team management links if user has a team (hidden during Setup)
+  if (userTeamId && currentWeek !== 'Setup') {
     if (teamRosterComplete) {
       // Full roster - show all team management options
+      // Hide Points during Preseason (no games played yet)
+      if (currentWeek !== 'Preseason') {
+        navItems.push({ href: `/teams/${userTeamId}`, label: 'Points' });
+      }
       navItems.push(
-        { href: `/teams/${userTeamId}`, label: 'Points' },
         { href: `/teams/${userTeamId}/transfers`, label: 'Transfers' },
         { href: `/teams/${userTeamId}/lineup`, label: 'Lineup' }
       );
@@ -112,8 +115,8 @@ export default function Navigation() {
     }
   }
 
-  // Add general navigation (Leagues hidden until roster is complete)
-  if (!userTeamId || teamRosterComplete) {
+  // Add general navigation (Leagues hidden until roster is complete, hidden during Setup)
+  if (currentWeek !== 'Setup' && (!userTeamId || teamRosterComplete)) {
     navItems.push({ href: '/leagues', label: 'Leagues' });
   }
   navItems.push({ href: '/players', label: 'Player Stats' });
@@ -121,6 +124,7 @@ export default function Navigation() {
   // Admin menu items (separate from main nav)
   const adminItems = [
     { href: '/players/prices', label: 'Player Prices' },
+    { href: '/admin/deadlines', label: 'Deadlines' },
     { href: '/teams', label: 'All Teams' }
   ];
 
@@ -277,6 +281,7 @@ export default function Navigation() {
                         <option value="">...</option>
                       ) : (
                         <>
+                          <option value="Setup">Setup</option>
                           <option value="Preseason">Pre</option>
                           {Array.from({ length: 18 }, (_, i) => i + 1).map((w) => (
                             <option key={w} value={w}>
@@ -314,8 +319,8 @@ export default function Navigation() {
               ) : currentWeek !== null && (
                 <div className="text-sm text-gray-600">
                   {currentYear && `${currentYear} - `}
-                  {currentWeek === 'Preseason' ? 'Preseason' : `Week ${currentWeek}`}
-                  {currentWeek !== 'Preseason' && currentDay && ` - Day ${currentDay}`}
+                  {currentWeek === 'Setup' ? 'Setup' : currentWeek === 'Preseason' ? 'Preseason' : `Week ${currentWeek}`}
+                  {currentWeek !== 'Preseason' && currentWeek !== 'Setup' && currentDay && ` - Day ${currentDay}`}
                 </div>
               )}
             </div>

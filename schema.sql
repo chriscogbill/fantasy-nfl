@@ -835,6 +835,35 @@ CREATE SEQUENCE public.nfl_fixtures_fixture_id_seq
 
 
 --
+-- Name: lineup_deadlines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lineup_deadlines (
+    deadline_id integer NOT NULL,
+    season integer NOT NULL,
+    week integer NOT NULL,
+    deadline_datetime timestamp with time zone NOT NULL,
+    deadline_day integer NOT NULL,
+    description character varying(100),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE SEQUENCE public.lineup_deadlines_deadline_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.lineup_deadlines_deadline_id_seq OWNED BY public.lineup_deadlines.deadline_id;
+ALTER TABLE ONLY public.lineup_deadlines ALTER COLUMN deadline_id SET DEFAULT nextval('public.lineup_deadlines_deadline_id_seq'::regclass);
+ALTER TABLE ONLY public.lineup_deadlines ADD CONSTRAINT lineup_deadlines_pkey PRIMARY KEY (deadline_id);
+ALTER TABLE ONLY public.lineup_deadlines ADD CONSTRAINT lineup_deadlines_season_week_key UNIQUE (season, week);
+
+
+--
 -- Name: nfl_fixtures_fixture_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 

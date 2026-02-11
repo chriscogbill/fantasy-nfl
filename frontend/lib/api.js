@@ -224,13 +224,37 @@ class ApiClient {
 
   async getCurrentWeek() {
     const response = await this.getSetting('current_week');
-    // Return 'Preseason' as-is, otherwise parse as integer
-    return response.value === 'Preseason' ? 'Preseason' : parseInt(response.value);
+    // Return 'Setup' and 'Preseason' as-is, otherwise parse as integer
+    if (response.value === 'Preseason' || response.value === 'Setup') return response.value;
+    return parseInt(response.value);
   }
 
   async getCurrentSeason() {
     const response = await this.getSetting('current_season');
     return parseInt(response.value);
+  }
+
+  // Deadlines
+  async getDeadlines(season) {
+    return this.request(`/api/deadlines?season=${season}`);
+  }
+
+  async getDeadline(season, week) {
+    return this.request(`/api/deadlines/${season}/${week}`);
+  }
+
+  async updateDeadline(season, week, data) {
+    return this.request(`/api/deadlines/${season}/${week}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async importDeadlines(season) {
+    return this.request('/api/deadlines/import', {
+      method: 'POST',
+      body: JSON.stringify({ season }),
+    });
   }
 }
 

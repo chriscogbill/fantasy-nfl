@@ -16,15 +16,19 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [teamData, setTeamData] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [deadlineText, setDeadlineText] = useState('TBD');
+  const [currentWeekState, setCurrentWeekState] = useState(null);
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const [teamsData, leaguesData, playersData, settingsData] = await Promise.all([
+        const [teamsData, leaguesData, playersData, settingsData, currentWeek, currentSeason] = await Promise.all([
           api.getTeams({ season: 2024 }),
           api.getLeagues({ season: 2024 }),
           api.getPlayers({ limit: 1 }),
           api.getSettings(),
+          api.getCurrentWeek(),
+          api.getCurrentSeason(),
         ]);
 
         setStats({
@@ -33,6 +37,22 @@ export default function Home() {
           players: '800+', // Estimated
         });
         setSettings(settingsData);
+        setCurrentWeekState(currentWeek);
+
+        // Fetch deadline for the lineup week
+        const lineupWeek = (currentWeek === 'Setup' || currentWeek === 'Preseason') ? 1 : parseInt(currentWeek) + 1;
+        try {
+          const deadlineData = await api.getDeadline(currentSeason, lineupWeek);
+          if (deadlineData.deadline) {
+            const dt = new Date(deadlineData.deadline.deadline_datetime);
+            setDeadlineText(
+              dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' ' +
+              dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+            );
+          }
+        } catch (e) {
+          // Deadline not set, keep TBD
+        }
       } catch (error) {
         console.error('Error fetching stats:', error);
       } finally {
@@ -75,10 +95,22 @@ export default function Home() {
         <p className="text-xl text-gray-600 mb-8">
           Build your dream team within a $100 million budget
         </p>
-        {user && userTeams.length === 0 && (
+        {/* Setup phase - season being prepared */}
+        {user && currentWeekState === 'Setup' && (
+          <div className="bg-primary-50 border border-primary-300 rounded-lg p-6 mb-6 max-w-2xl mx-auto">
+            <p className="text-primary-900 font-semibold mb-2">
+              Welcome, {user.username}!
+            </p>
+            <p className="text-primary-700 text-sm">
+              The season is being prepared. Team selection will open during Preseason.
+            </p>
+          </div>
+        )}
+        {/* No team yet - prompt to create (hidden during Setup) */}
+        {user && currentWeekState !== 'Setup' && userTeams.length === 0 && (
           <div className="bg-primary-50 border border-primary-300 rounded-lg p-4 mb-6 max-w-2xl mx-auto">
             <p className="text-primary-900 font-semibold mb-2">
-              Welcome, {user.username}! You don't have a team yet.
+              Welcome, {user.username}! You don&apos;t have a team yet.
             </p>
             <p className="text-primary-700 text-sm mb-3">
               Create your first team to start playing Fantasy NFL!
@@ -88,7 +120,8 @@ export default function Home() {
             </Link>
           </div>
         )}
-        {user && userTeams.length > 0 && parseInt(userTeams[0].roster_count) < 15 && (
+        {/* Team needs players (hidden during Setup) */}
+        {user && currentWeekState !== 'Setup' && userTeams.length > 0 && parseInt(userTeams[0].roster_count) < 15 && (
           <div className="bg-primary-50 border border-primary-300 rounded-lg p-6 mb-6 max-w-3xl mx-auto">
             <p className="text-primary-900 font-semibold mb-2">
               Welcome, {user.username}!
@@ -101,7 +134,8 @@ export default function Home() {
             </Link>
           </div>
         )}
-        {user && userTeams.length > 0 && parseInt(userTeams[0].roster_count) >= 15 && (
+        {/* Full roster - team management (hidden during Setup) */}
+        {user && currentWeekState !== 'Setup' && userTeams.length > 0 && parseInt(userTeams[0].roster_count) >= 15 && (
           <div className="bg-positive-50 border border-positive-300 rounded-lg p-6 mb-6 max-w-3xl mx-auto">
             <p className="text-positive-900 font-semibold mb-2">
               Welcome back, {user.username}!
@@ -109,16 +143,19 @@ export default function Home() {
             <p className="text-positive-700 text-sm mb-4">
               Manage your team: {userTeams[0].team_name}
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex flex-col items-center">
-                <div className="text-4xl mb-2">📊</div>
-                <Link href={`/teams/${userTeams[0].team_id}`} className="btn-primary w-full text-center mb-2">
-                  View Your Points
-                </Link>
-                <span className="text-sm text-gray-600">
-                  GW{settings?.current_week || '-'}: {teamData?.gameweek_points?.toFixed(1) || '0.0'} pts
-                </span>
-              </div>
+            <div className={`grid grid-cols-1 ${currentWeekState === 'Preseason' ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4`}>
+              {/* Hide Points during Preseason */}
+              {currentWeekState !== 'Preseason' && (
+                <div className="flex flex-col items-center">
+                  <div className="text-4xl mb-2">📊</div>
+                  <Link href={`/teams/${userTeams[0].team_id}`} className="btn-primary w-full text-center mb-2">
+                    View Your Points
+                  </Link>
+                  <span className="text-sm text-gray-600">
+                    GW{settings?.current_week || '-'}: {teamData?.gameweek_points?.toFixed(1) || '0.0'} pts
+                  </span>
+                </div>
+              )}
               <div className="flex flex-col items-center">
                 <div className="text-4xl mb-2">🔄</div>
                 <Link href={`/teams/${userTeams[0].team_id}/transfers`} className="btn-primary w-full text-center mb-2">
@@ -134,7 +171,7 @@ export default function Home() {
                   Set Starting Lineup
                 </Link>
                 <span className="text-sm text-gray-600">
-                  Deadline: {settings?.lineup_deadline || 'TBD'}
+                  Deadline: {deadlineText}
                 </span>
               </div>
             </div>

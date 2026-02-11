@@ -304,6 +304,33 @@ router.put('/:id/lineup', async (req, res) => {
       });
     }
 
+    // Check deadline enforcement (uses simulated date from app_settings)
+    const settingsResult = await client.query(
+      "SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('current_week', 'current_day', 'current_season')"
+    );
+    const settings = {};
+    settingsResult.rows.forEach(r => { settings[r.setting_key] = r.setting_value; });
+
+    if (settings.current_week && settings.current_week !== 'Preseason' && settings.current_week !== 'Setup') {
+      const deadlineResult = await client.query(
+        'SELECT deadline_day FROM lineup_deadlines WHERE season = $1 AND week = $2',
+        [parseInt(settings.current_season) || season, parseInt(settings.current_week) + 1]
+      );
+
+      if (deadlineResult.rows.length > 0) {
+        const deadlineDay = deadlineResult.rows[0].deadline_day;
+        const currentDay = parseInt(settings.current_day) || 1;
+
+        if (currentDay >= deadlineDay) {
+          client.release();
+          return res.status(403).json({
+            success: false,
+            error: 'Lineup locked — deadline has passed for this week'
+          });
+        }
+      }
+    }
+
     await client.query('BEGIN');
 
     // First, set all players in this week's roster to BENCH

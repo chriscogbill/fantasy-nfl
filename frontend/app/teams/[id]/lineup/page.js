@@ -25,6 +25,9 @@ export default function LineupPage() {
 
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const [deadline, setDeadline] = useState(null);
+  const [currentDay, setCurrentDay] = useState(null);
+  const [lineupLocked, setLineupLocked] = useState(false);
 
   // Required positions
   const requiredPositions = [
@@ -39,9 +42,9 @@ export default function LineupPage() {
     { slot: 'DEF', position: 'DEF', count: 1 },
   ];
 
-  // Lineup week is next week (or Week 1 during Preseason)
+  // Lineup week is next week (or Week 1 during Setup/Preseason)
   const lineupWeek = currentWeek !== null
-    ? (currentWeek === 'Preseason' ? 1 : parseInt(currentWeek) + 1)
+    ? (currentWeek === 'Setup' || currentWeek === 'Preseason' ? 1 : parseInt(currentWeek) + 1)
     : null;
 
   useEffect(() => {
@@ -60,18 +63,38 @@ export default function LineupPage() {
     setLoading(true);
     setError('');
     try {
-      const week = await api.getCurrentWeek();
+      const [week, season, dayResponse] = await Promise.all([
+        api.getCurrentWeek(),
+        api.getCurrentSeason(),
+        api.getSetting('current_day'),
+      ]);
       setCurrentWeek(week);
+      const day = parseInt(dayResponse.value) || 1;
+      setCurrentDay(day);
 
-      const displayWeek = week === 'Preseason' ? 1 : parseInt(week) + 1;
+      const displayWeek = (week === 'Setup' || week === 'Preseason') ? 1 : parseInt(week) + 1;
 
-      const [teamData, rosterData] = await Promise.all([
+      const [teamData, rosterData, deadlineData] = await Promise.all([
         api.getTeam(teamId),
-        api.getTeamRoster(teamId, { week: displayWeek, season: 2024 }).catch(() => ({
+        api.getTeamRoster(teamId, { week: displayWeek, season }).catch(() => ({
           starters: [],
           bench: [],
         })),
+        api.getDeadline(season, displayWeek).catch(() => ({ deadline: null })),
       ]);
+
+      // Check if lineup is locked (never locked during Preseason)
+      if (deadlineData.deadline) {
+        setDeadline(deadlineData.deadline);
+        if (week !== 'Preseason') {
+          setLineupLocked(day >= deadlineData.deadline.deadline_day);
+        } else {
+          setLineupLocked(false);
+        }
+      } else {
+        setDeadline(null);
+        setLineupLocked(false);
+      }
 
       setTeam(teamData.team);
 
@@ -224,6 +247,14 @@ export default function LineupPage() {
     return <div className="text-center py-12 text-gray-500">Team not found</div>;
   }
 
+  if (currentWeek === 'Setup') {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500 text-lg">The season is being prepared. Lineup selection will open during Preseason.</p>
+      </div>
+    );
+  }
+
   // Check if user owns this team
   if (team.user_email !== user.email) {
     return (
@@ -294,9 +325,35 @@ export default function LineupPage() {
 
       <div className="card">
         <h1 className="text-3xl font-bold mb-2">Lineup - {team.team_name}</h1>
-        <p className="text-primary-700 font-semibold text-lg mb-4">
+        <p className="text-primary-700 font-semibold text-lg">
           {currentWeek === 'Preseason' ? 'Setting Week 1 lineup' : `Setting Week ${lineupWeek} lineup`}
         </p>
+        <div className="mt-2">
+          {lineupLocked ? (
+            <div className="inline-flex items-center gap-2 bg-danger-100 border border-danger-400 text-danger-700 px-3 py-1.5 rounded text-sm font-medium">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Lineup locked — deadline has passed
+              {deadline && (
+                <span className="text-xs opacity-75">
+                  ({new Date(deadline.deadline_datetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} {new Date(deadline.deadline_datetime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })})
+                </span>
+              )}
+            </div>
+          ) : deadline ? (
+            <div className="inline-flex items-center gap-2 bg-primary-50 border border-primary-200 text-primary-600 px-3 py-1.5 rounded text-sm font-medium">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Deadline: {new Date(deadline.deadline_datetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} {new Date(deadline.deadline_datetime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 text-gray-500 text-sm">
+              Deadline: TBD
+            </div>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -350,17 +407,19 @@ export default function LineupPage() {
                             ℹ️
                           </button>
                         </div>
-                        <button
-                          onClick={() => moveToBench(player)}
-                          className="btn-primary text-sm px-3 py-1"
-                        >
-                          Bench
-                        </button>
+                        {!lineupLocked && (
+                          <button
+                            onClick={() => moveToBench(player)}
+                            className="btn-primary text-sm px-3 py-1"
+                          >
+                            Bench
+                          </button>
+                        )}
                       </>
                     ) : (
                       <div className="flex-1">
-                        <div className="text-gray-500 italic mb-2">Empty slot - Select a player:</div>
-                        <div className="flex gap-2 flex-wrap">
+                        <div className="text-gray-500 italic mb-2">{lineupLocked ? 'Empty slot (locked)' : 'Empty slot - Select a player:'}</div>
+                        {!lineupLocked && <div className="flex gap-2 flex-wrap">
                           {sortedBench
                             .filter((benchPlayer) => canPlayInSlot(benchPlayer, pos.slot))
                             .map((benchPlayer) => (
@@ -381,7 +440,7 @@ export default function LineupPage() {
                           {sortedBench.filter((benchPlayer) => canPlayInSlot(benchPlayer, pos.slot)).length === 0 && (
                             <span className="text-sm text-gray-400">No eligible players on bench</span>
                           )}
-                        </div>
+                        </div>}
                       </div>
                     )}
                   </div>
@@ -430,7 +489,7 @@ export default function LineupPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-wrap">
+                  {!lineupLocked && <div className="flex gap-2 flex-wrap">
                     {requiredPositions
                       .filter((pos) => canPlayInSlot(player, pos.slot))
                       .map((pos) => {
@@ -455,7 +514,7 @@ export default function LineupPage() {
                           </button>
                         );
                       })}
-                  </div>
+                  </div>}
                 </div>
               </div>
             ))}

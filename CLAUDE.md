@@ -104,7 +104,7 @@ cd frontend && npm run dev  # Dev server on 3001
 ## Database
 
 - **Database name**: fantasyNFL
-- **Key tables**: players, player_stats, player_current_prices, player_price_history, player_scores (view), teams, rosters, transfers, leagues, league_entries, league_standings, nfl_fixtures, scoring, scoring_sections, roster_constraints, users, app_settings
+- **Key tables**: players, player_stats, player_current_prices, player_price_history, player_scores (view), teams, rosters, transfers, leagues, league_entries, league_standings, nfl_fixtures, scoring, scoring_sections, roster_constraints, users, app_settings, lineup_deadlines
 - **Key view**: `player_scores` - Computed view that cross-joins `player_stats` with `scoring` rules to calculate fantasy points per format (PPR, standard, etc.). This is the core scoring engine.
 - **Key functions**: calculate_transfer_impact(), get_available_players(), get_lineup_with_points(), get_league_standings(), get_league_history(), set_starting_lineup(), validate_roster(), copy_all_rosters_to_next_week()
 - **Indexes**: 12 indexes on common query patterns (rosters by team/week, standings, fixtures, price history)
@@ -154,7 +154,11 @@ cd frontend && npm run dev  # Dev server on 3001
 - [x] Fix players currently showing on wrong teams - RESOLVED: Removed team_2024 column (was redundant). Now using `players.team` (current team from Sleeper API) for display, and `player_stats.team` for per-game opponent tracking. Note: During backtesting, players show their current real-world team, not their historical team - this is expected behavior
 
 ### Set Lineup Page
-- [ ] Show deadline for choosing lineup
+- [x] Show deadline for choosing lineup - DONE: Created `lineup_deadlines` table, ESPN auto-import, admin management page, deadline display on lineup page and home page, enforcement via simulated day comparison (locks lineup when `current_day >= deadline_day`), works during Preseason too (shows deadline but doesn't lock)
+
+### Admin Features (Upcoming)
+- [ ] Add 'Set Starting Prices' admin page — lets admin import player data from different sources and adjust prices before the season starts, available to all users once published
+- [x] Add a pre-preseason "Setup" phase where users can't select or modify teams - DONE: Added "Setup" option to admin week selector. During Setup: nav hides team management links, home page shows "season being prepared" message, transfers/lineup/create-team pages show blocking message. Points nav hidden during Preseason too
 
 ### Player Stats Modal
 - [x] Fix opponent display: Past weeks (based on current_week setting) should show opponent from `player_stats.team`, future weeks should show fixtures from `nfl_fixtures` based on `players.team` - DONE
