@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import { useAuth } from '../lib/AuthContext';
 
 export default function PlayerStatsModal({ player, isOpen, onClose }) {
+  const { currentSeason } = useAuth();
   const [stats, setStats] = useState([]);
   const [currentWeek, setCurrentWeek] = useState('Preseason');
   const [loading, setLoading] = useState(false);
@@ -20,7 +22,7 @@ export default function PlayerStatsModal({ player, isOpen, onClose }) {
     setError('');
     try {
       console.log('Fetching stats for player:', player.player_id, player.player_name || player.name);
-      const response = await api.getPlayerStats(player.player_id, { season: 2024 });
+      const response = await api.getPlayerStats(player.player_id, { season: currentSeason });
       console.log('Stats response:', response);
       setStats(response.stats || []);
       setCurrentWeek(response.currentWeek || 'Preseason');
@@ -211,7 +213,7 @@ export default function PlayerStatsModal({ player, isOpen, onClose }) {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">{player?.player_name || player?.name}</h2>
             <p className="text-sm text-gray-600 mt-1">
-              {player?.player_position || player?.position} • {player?.player_team || player?.team} • 2024 Season
+              {player?.player_position || player?.position} • {player?.player_team || player?.team} • {currentSeason} Season
             </p>
           </div>
           <button

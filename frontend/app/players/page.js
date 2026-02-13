@@ -6,9 +6,9 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 
 export default function PlayersPage() {
-  const { user, userTeamId } = useAuth();
+  const { user, userTeamId, currentSeason } = useAuth();
   const showBuyButton = user && userTeamId;
-  const [players, setPlayers] = useState([]);
+  const [allPlayers, setAllPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     position: '',
@@ -19,29 +19,28 @@ export default function PlayersPage() {
 
   useEffect(() => {
     fetchPlayers();
-  }, [filters]);
+  }, [currentSeason]);
 
   async function fetchPlayers() {
     setLoading(true);
     try {
-      const params = {
-        limit: 50,
-        season: 2024,
-      };
-
-      if (filters.position) params.position = filters.position;
-      if (filters.search) params.search = filters.search;
-      if (filters.minPrice) params.minPrice = filters.minPrice;
-      if (filters.maxPrice) params.maxPrice = filters.maxPrice;
-
-      const data = await api.getPlayers(params);
-      setPlayers(data.players || []);
+      const data = await api.getPlayers({ limit: 1000, season: currentSeason });
+      setAllPlayers(data.players || []);
     } catch (error) {
       console.error('Error fetching players:', error);
     } finally {
       setLoading(false);
     }
   }
+
+  // Client-side filtering
+  const players = allPlayers.filter(player => {
+    if (filters.position && player.player_position !== filters.position) return false;
+    if (filters.search && !player.player_name.toLowerCase().includes(filters.search.toLowerCase())) return false;
+    if (filters.minPrice && parseFloat(player.current_price) < parseFloat(filters.minPrice)) return false;
+    if (filters.maxPrice && parseFloat(player.current_price) > parseFloat(filters.maxPrice)) return false;
+    return true;
+  });
 
   function handleFilterChange(key, value) {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -145,7 +144,7 @@ export default function PlayersPage() {
 
       {/* Results Count */}
       <div className="text-sm text-gray-600">
-        {loading ? 'Loading...' : `${players.length} players found`}
+        {loading ? 'Loading...' : `${players.length} of ${allPlayers.length} players`}
       </div>
 
       {/* Players Table */}
@@ -159,8 +158,9 @@ export default function PlayersPage() {
         </div>
       ) : (
         <div className="card overflow-x-auto">
+          <div className="max-h-[600px] overflow-y-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b-2 border-gray-200">
+            <thead className="bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10">
               <tr>
                 {showBuyButton && <th className="px-2 py-3 w-10"></th>}
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Player</th>
@@ -211,6 +211,7 @@ export default function PlayersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

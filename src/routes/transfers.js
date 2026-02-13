@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
+const { getCurrentSeason } = require('../helpers/settings');
 
 // POST /api/transfers/preview - Preview a transfer (calculate costs)
 router.post('/preview', async (req, res) => {
   try {
-    const { teamId, playersOut = [], playersIn = [], week, season = 2024 } = req.body;
+    const { teamId, playersOut = [], playersIn = [], week } = req.body;
+    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
 
     if (!teamId || !week) {
       return res.status(400).json({
@@ -56,7 +58,8 @@ router.post('/execute', async (req, res) => {
   const client = await pool.connect();
 
   try {
-    const { teamId, playersOut = [], playersIn = [], week, season = 2024 } = req.body;
+    const { teamId, playersOut = [], playersIn = [], week } = req.body;
+    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
 
     if (!teamId || !week) {
       return res.status(400).json({
@@ -251,7 +254,8 @@ router.post('/execute', async (req, res) => {
 // POST /api/transfers/validate-roster - Validate a proposed roster
 router.post('/validate-roster', async (req, res) => {
   try {
-    const { playerIds, season = 2024 } = req.body;
+    const { playerIds } = req.body;
+    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
 
     if (!playerIds || !Array.isArray(playerIds)) {
       return res.status(400).json({
@@ -294,7 +298,8 @@ router.post('/validate-roster', async (req, res) => {
 // GET /api/transfers/history - Get all transfers (admin/global view)
 router.get('/history', async (req, res) => {
   try {
-    const { season = 2024, week, limit = 50 } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const { week, limit = 50 } = req.query;
 
     let query = `
       SELECT

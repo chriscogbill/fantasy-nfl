@@ -7,7 +7,7 @@ import { useAuth } from '../../../lib/AuthContext';
 
 export default function PlayerPricesPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, currentSeason } = useAuth();
 
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +43,7 @@ export default function PlayerPricesPage() {
           api.getSetting('current_week'),
           api.getSetting('current_day'),
         ]);
-        setSeason(parseInt(seasonResp.value) || 2024);
+        setSeason(parseInt(seasonResp.value) || currentSeason || 2024);
         setWeek(weekResp.value === 'Preseason' ? 'Preseason' : parseInt(weekResp.value));
         setDay(parseInt(dayResp.value) || 1);
         setSettingsLoaded(true);
@@ -65,7 +65,7 @@ export default function PlayerPricesPage() {
   async function fetchPlayers() {
     setLoading(true);
     try {
-      const params = { limit: 50, season: season || 2024 };
+      const params = { limit: 50, season: season || currentSeason || 2024 };
       if (filters.position) params.position = filters.position;
       if (filters.search) params.search = filters.search;
       if (filters.minPrice) params.minPrice = filters.minPrice;
@@ -148,7 +148,7 @@ export default function PlayerPricesPage() {
       )}
 
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Player Prices</h1>
+        <h1 className="text-3xl font-bold">Price Changes</h1>
       </div>
 
       {/* Price Change Settings */}
@@ -162,7 +162,7 @@ export default function PlayerPricesPage() {
               onChange={(e) => setSeason(parseInt(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
-              {[2024, 2025, 2026].map(y => (
+              {currentSeason && [currentSeason - 1, currentSeason, currentSeason + 1].map(y => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>

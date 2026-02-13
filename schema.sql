@@ -137,16 +137,18 @@ $$;
 -- Name: get_available_players(integer, character varying, numeric, numeric, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_available_players(p_season integer DEFAULT 2024, p_position character varying DEFAULT NULL::character varying, p_min_price numeric DEFAULT NULL::numeric, p_max_price numeric DEFAULT NULL::numeric, p_search_name character varying DEFAULT NULL::character varying, p_current_week character varying DEFAULT 'Preseason') RETURNS TABLE(player_id integer, player_name character varying, player_position character varying, player_team character varying, current_price numeric, avg_points numeric, season_total numeric, prev_season_total numeric, fixture_week_1 character varying, fixture_week_2 character varying, fixture_week_3 character varying)
+CREATE FUNCTION public.get_available_players(p_season integer DEFAULT 2024, p_position character varying DEFAULT NULL::character varying, p_min_price numeric DEFAULT NULL::numeric, p_max_price numeric DEFAULT NULL::numeric, p_search_name character varying DEFAULT NULL::character varying, p_current_week character varying DEFAULT 'Preseason') RETURNS TABLE(player_id integer, player_name character varying, player_position character varying, player_team character varying, current_price numeric, avg_points numeric, season_total numeric, prev_season_total numeric, fixture_week_1 character varying, fixture_week_2 character varying, fixture_week_3 character varying, search_rank integer)
     LANGUAGE plpgsql
     AS $$
 DECLARE
     v_next_week_1 INTEGER;
     v_next_week_2 INTEGER;
     v_next_week_3 INTEGER;
+    v_is_preseason BOOLEAN;
 BEGIN
-    -- Calculate next 3 weeks based on current week
-    IF p_current_week = 'Preseason' THEN
+    v_is_preseason := (p_current_week = 'Preseason' OR p_current_week = 'Setup');
+
+    IF v_is_preseason THEN
         v_next_week_1 := 1;
         v_next_week_2 := 2;
         v_next_week_3 := 3;
@@ -164,11 +166,11 @@ BEGIN
         p.team,
         pcp.current_price,
         CASE
-            WHEN p_current_week = 'Preseason' THEN 0.0
+            WHEN v_is_preseason THEN 0.0
             ELSE ROUND(AVG(ps.total_points), 2)
         END as avg_points,
         CASE
-            WHEN p_current_week = 'Preseason' THEN 0.0
+            WHEN v_is_preseason THEN 0.0
             ELSE ROUND(SUM(ps.total_points), 2)
         END as season_total,
         -- Previous season total points (for preseason display)
@@ -205,19 +207,20 @@ BEGIN
         FROM nfl_fixtures f3
         WHERE f3.season = p_season AND f3.week = v_next_week_3
             AND (f3.home_team = p.team OR f3.away_team = p.team)
-        LIMIT 1) as fixture_week_3
+        LIMIT 1) as fixture_week_3,
+        p.search_rank
     FROM players p
     JOIN player_current_prices pcp ON p.player_id = pcp.player_id
     LEFT JOIN player_scores ps ON p.player_id = ps.player_id
         AND ps.season = p_season
         AND ps.league_format = 'ppr'
-        AND (p_current_week = 'Preseason' OR ps.week <= p_current_week::integer)
+        AND (v_is_preseason OR ps.week <= p_current_week::integer)
     WHERE pcp.season = p_season
         AND (p_position IS NULL OR p.position = p_position)
         AND (p_min_price IS NULL OR pcp.current_price >= p_min_price)
         AND (p_max_price IS NULL OR pcp.current_price <= p_max_price)
         AND (p_search_name IS NULL OR p.name ILIKE '%' || p_search_name || '%')
-    GROUP BY p.player_id, p.name, p.position, p.team, pcp.current_price
+    GROUP BY p.player_id, p.name, p.position, p.team, pcp.current_price, p.search_rank
     ORDER BY pcp.current_price DESC;
 END;
 $$;
@@ -1014,7 +1017,8 @@ CREATE TABLE public.players (
     status character varying(50) DEFAULT 'active'::character varying,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    sleeper_id character varying(50)
+    sleeper_id character varying(50),
+    search_rank integer
 );
 
 
@@ -2027,6 +2031,153 @@ ALTER TABLE ONLY public.transfers
 
 ALTER TABLE ONLY public.transfers
     ADD CONSTRAINT transfers_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.teams(team_id) ON DELETE CASCADE;
+
+
+--
+-- Name: player_prices_archive; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.player_prices_archive (
+    archive_id integer NOT NULL,
+    season integer NOT NULL,
+    player_id integer NOT NULL,
+    final_price numeric(5,1),
+    algorithm_price numeric(5,1),
+    price numeric(5,1),
+    price_change numeric(5,1),
+    change_reason character varying(100),
+    week integer,
+    day integer,
+    record_type character varying(20) NOT NULL,
+    original_timestamp timestamp without time zone,
+    archived_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE SEQUENCE public.player_prices_archive_archive_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.player_prices_archive_archive_id_seq OWNED BY public.player_prices_archive.archive_id;
+
+ALTER TABLE ONLY public.player_prices_archive ALTER COLUMN archive_id SET DEFAULT nextval('public.player_prices_archive_archive_id_seq'::regclass);
+
+ALTER TABLE ONLY public.player_prices_archive
+    ADD CONSTRAINT player_prices_archive_pkey PRIMARY KEY (archive_id);
+
+CREATE INDEX idx_prices_archive_season ON public.player_prices_archive USING btree (season);
+CREATE INDEX idx_prices_archive_player ON public.player_prices_archive USING btree (player_id, season);
+
+
+--
+-- Name: scoring_archive; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.scoring_archive (
+    archive_id integer NOT NULL,
+    season integer NOT NULL,
+    scoring_type character varying(50) NOT NULL,
+    points numeric(5,2) NOT NULL,
+    league_format character varying(20) DEFAULT 'standard'::character varying,
+    description text,
+    scoring_section integer,
+    section_name character varying(50),
+    archived_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE SEQUENCE public.scoring_archive_archive_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.scoring_archive_archive_id_seq OWNED BY public.scoring_archive.archive_id;
+
+ALTER TABLE ONLY public.scoring_archive ALTER COLUMN archive_id SET DEFAULT nextval('public.scoring_archive_archive_id_seq'::regclass);
+
+ALTER TABLE ONLY public.scoring_archive
+    ADD CONSTRAINT scoring_archive_pkey PRIMARY KEY (archive_id);
+
+CREATE INDEX idx_scoring_archive_season ON public.scoring_archive USING btree (season);
+
+
+--
+-- Name: player_season_totals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.player_season_totals (
+    player_id integer NOT NULL,
+    season integer NOT NULL,
+    league_format character varying(20) NOT NULL DEFAULT 'ppr'::character varying,
+    total_points numeric(8,2) DEFAULT 0,
+    passing_points numeric(8,2) DEFAULT 0,
+    rushing_points numeric(8,2) DEFAULT 0,
+    receiving_points numeric(8,2) DEFAULT 0,
+    kicking_points numeric(8,2) DEFAULT 0,
+    defense_points numeric(8,2) DEFAULT 0,
+    misc_points numeric(8,2) DEFAULT 0,
+    games_played integer DEFAULT 0
+);
+
+ALTER TABLE ONLY public.player_season_totals
+    ADD CONSTRAINT player_season_totals_pkey PRIMARY KEY (player_id, season, league_format);
+
+ALTER TABLE ONLY public.player_season_totals
+    ADD CONSTRAINT player_season_totals_player_id_fkey FOREIGN KEY (player_id) REFERENCES public.players(player_id);
+
+CREATE INDEX idx_player_season_totals_season ON public.player_season_totals USING btree (season);
+
+
+--
+-- Name: player_stats_archive; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.player_stats_archive (
+    stat_id integer NOT NULL,
+    player_id integer,
+    week integer NOT NULL,
+    season integer NOT NULL,
+    opponent character varying(50),
+    passing_yards integer DEFAULT 0,
+    passing_tds integer DEFAULT 0,
+    interceptions integer DEFAULT 0,
+    completions integer DEFAULT 0,
+    attempts integer DEFAULT 0,
+    rushing_yards integer DEFAULT 0,
+    rushing_tds integer DEFAULT 0,
+    rushing_attempts integer DEFAULT 0,
+    receptions integer DEFAULT 0,
+    receiving_yards integer DEFAULT 0,
+    receiving_tds integer DEFAULT 0,
+    targets integer DEFAULT 0,
+    fumbles_lost integer DEFAULT 0,
+    two_point_conversions integer DEFAULT 0,
+    game_date date,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    fg_0_19 integer DEFAULT 0,
+    fg_20_29 integer DEFAULT 0,
+    fg_30_39 integer DEFAULT 0,
+    fg_40_49 integer DEFAULT 0,
+    fg_50p integer DEFAULT 0,
+    xp_made integer DEFAULT 0,
+    xp_missed integer DEFAULT 0,
+    fga integer DEFAULT 0,
+    def_td integer DEFAULT 0,
+    points_allowed integer DEFAULT 0,
+    team character varying(10),
+    archived_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE ONLY public.player_stats_archive
+    ADD CONSTRAINT player_stats_archive_pkey PRIMARY KEY (player_id, week, season);
+
+CREATE INDEX idx_stats_archive_season ON public.player_stats_archive USING btree (season);
+CREATE INDEX idx_stats_archive_player ON public.player_stats_archive USING btree (player_id, season);
 
 
 --

@@ -9,7 +9,7 @@ import { useAuth } from '../../../lib/AuthContext';
 export default function LeagueDetailPage() {
   const params = useParams();
   const leagueId = params.id;
-  const { user } = useAuth();
+  const { user, currentSeason } = useAuth();
 
   const [league, setLeague] = useState(null);
   const [standings, setStandings] = useState([]);
@@ -65,7 +65,7 @@ export default function LeagueDetailPage() {
       // Only fetch standings if we have a valid numeric week
       if (week !== 'Preseason' && !isNaN(week)) {
         try {
-          const standingsData = await api.getLeagueStandings(leagueId, { week, season: 2024 });
+          const standingsData = await api.getLeagueStandings(leagueId, { week, season: currentSeason });
           setStandings(standingsData.standings || []);
         } catch (standingsError) {
           console.error('Error fetching standings:', standingsError);

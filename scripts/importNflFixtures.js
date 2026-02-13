@@ -1,5 +1,6 @@
 const axios = require('axios');
 const pool = require('../src/db/connection');
+const { getCurrentSeason } = require('../src/helpers/settings');
 
 // Map ESPN team abbreviations to our database abbreviations
 const TEAM_MAP = {
@@ -12,8 +13,8 @@ function normalizeTeam(espnAbbr) {
   return TEAM_MAP[espnAbbr] || espnAbbr;
 }
 
-async function fetchWeekSchedule(week, seasonType = 2) {
-  const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=${seasonType}&week=${week}&dates=2024`;
+async function fetchWeekSchedule(week, season, seasonType = 2) {
+  const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=${seasonType}&week=${week}&dates=${season}`;
 
   try {
     const response = await axios.get(url);
@@ -37,22 +38,27 @@ async function fetchWeekSchedule(week, seasonType = 2) {
   }
 }
 
-async function importFixtures() {
+async function importFixtures(seasonOverride) {
   const client = await pool.connect();
 
   try {
-    console.log('Starting NFL 2024 fixtures import...');
+    // Resolve season: CLI arg > parameter > app_settings
+    const cliSeason = process.argv.find(arg => arg.startsWith('--season='))?.split('=')[1]
+      || (process.argv.indexOf('--season') !== -1 ? process.argv[process.argv.indexOf('--season') + 1] : null);
+    const season = cliSeason ? parseInt(cliSeason) : (seasonOverride || await getCurrentSeason(pool));
 
-    // Clear existing 2024 fixtures
-    await client.query('DELETE FROM nfl_fixtures WHERE season = 2024');
-    console.log('Cleared existing 2024 fixtures');
+    console.log(`Starting NFL ${season} fixtures import...`);
+
+    // Clear existing fixtures for this season
+    await client.query('DELETE FROM nfl_fixtures WHERE season = $1', [season]);
+    console.log(`Cleared existing ${season} fixtures`);
 
     let totalImported = 0;
 
     // Import regular season (weeks 1-18)
     for (let week = 1; week <= 18; week++) {
       console.log(`\nFetching Week ${week}...`);
-      const fixtures = await fetchWeekSchedule(week, 2);
+      const fixtures = await fetchWeekSchedule(week, season, 2);
 
       if (fixtures.length === 0) {
         console.log(`  No games found for Week ${week}`);
@@ -65,9 +71,9 @@ async function importFixtures() {
         try {
           await client.query(
             `INSERT INTO nfl_fixtures (season, week, home_team, away_team)
-             VALUES (2024, $1, $2, $3)
+             VALUES ($1, $2, $3, $4)
              ON CONFLICT (season, week, home_team, away_team) DO NOTHING`,
-            [fixture.week, fixture.homeTeam, fixture.awayTeam]
+            [season, fixture.week, fixture.homeTeam, fixture.awayTeam]
           );
           console.log(`  ✓ ${fixture.homeTeam} vs ${fixture.awayTeam}`);
           totalImported++;
@@ -86,9 +92,10 @@ async function importFixtures() {
     const result = await client.query(
       `SELECT week, COUNT(*) as count
        FROM nfl_fixtures
-       WHERE season = 2024
+       WHERE season = $1
        GROUP BY week
-       ORDER BY week`
+       ORDER BY week`,
+      [season]
     );
 
     console.log('\nFixtures per week:');
@@ -104,5 +111,9 @@ async function importFixtures() {
   }
 }
 
-// Run the import
-importFixtures();
+// Export for use as API endpoint, run directly if executed from CLI
+if (require.main === module) {
+  importFixtures();
+}
+
+module.exports = { importFixtures };

@@ -6,7 +6,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, currentSeason } = useAuth();
   const [stats, setStats] = useState({
     teams: 0,
     leagues: 0,
@@ -22,13 +22,12 @@ export default function Home() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const [teamsData, leaguesData, playersData, settingsData, currentWeek, currentSeason] = await Promise.all([
-          api.getTeams({ season: 2024 }),
-          api.getLeagues({ season: 2024 }),
+        const [teamsData, leaguesData, playersData, settingsData, currentWeek] = await Promise.all([
+          api.getTeams({ season: currentSeason }),
+          api.getLeagues({ season: currentSeason }),
           api.getPlayers({ limit: 1 }),
           api.getSettings(),
           api.getCurrentWeek(),
-          api.getCurrentSeason(),
         ]);
 
         setStats({
@@ -60,20 +59,21 @@ export default function Home() {
       }
     }
 
-    fetchStats();
-  }, []);
+    if (currentSeason) fetchStats();
+  }, [currentSeason]);
 
   useEffect(() => {
     async function fetchUserTeams() {
-      if (user) {
+      if (user && currentWeekState !== null) {
         try {
-          const teamsData = await api.getTeams({ season: 2024 });
+          const teamsData = await api.getTeams({ season: currentSeason });
           const myTeams = teamsData.teams?.filter(t => t.user_email === user.email) || [];
           setUserTeams(myTeams);
 
           // Fetch detailed team data if user has a team
           if (myTeams.length > 0) {
-            const teamDetail = await api.getTeamRoster(myTeams[0].team_id);
+            const week = (currentWeekState === 'Setup' || currentWeekState === 'Preseason') ? 1 : parseInt(currentWeekState) + 1;
+            const teamDetail = await api.getTeamRoster(myTeams[0].team_id, { week, season: currentSeason });
             setTeamData(teamDetail);
           }
         } catch (error) {
@@ -83,7 +83,7 @@ export default function Home() {
     }
 
     fetchUserTeams();
-  }, [user]);
+  }, [user, currentWeekState, currentSeason]);
 
   return (
     <div className="space-y-12">

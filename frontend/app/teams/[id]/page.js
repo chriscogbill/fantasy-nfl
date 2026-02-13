@@ -10,7 +10,7 @@ import PlayerStatsModal from '../../../components/PlayerStatsModal';
 export default function TeamDetailPage() {
   const params = useParams();
   const teamId = params.id;
-  const { user } = useAuth();
+  const { user, currentSeason } = useAuth();
 
   const [team, setTeam] = useState(null);
   const [roster, setRoster] = useState(null);
@@ -49,7 +49,7 @@ export default function TeamDetailPage() {
     try {
       const [teamData, rosterData] = await Promise.all([
         api.getTeam(teamId),
-        api.getTeamRoster(teamId, { week, season: 2024 }),
+        api.getTeamRoster(teamId, { week, season: currentSeason }),
       ]);
 
       setTeam(teamData.team);

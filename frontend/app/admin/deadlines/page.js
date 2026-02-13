@@ -7,10 +7,10 @@ import { useAuth } from '../../../lib/AuthContext';
 
 export default function DeadlinesPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, currentSeason } = useAuth();
 
   const [deadlines, setDeadlines] = useState([]);
-  const [season, setSeason] = useState(2024);
+  const [season, setSeason] = useState(null);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
@@ -26,7 +26,13 @@ export default function DeadlinesPage() {
   }, [authLoading, user, router]);
 
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (currentSeason && !season) {
+      setSeason(currentSeason);
+    }
+  }, [currentSeason]);
+
+  useEffect(() => {
+    if (user?.role === 'admin' && season) {
       fetchDeadlines();
     }
   }, [user, season]);
@@ -120,13 +126,13 @@ export default function DeadlinesPage() {
         <h1 className="text-3xl font-bold">Lineup Deadlines</h1>
         <div className="flex items-center gap-3">
           <select
-            value={season}
+            value={season || ''}
             onChange={(e) => setSeason(parseInt(e.target.value))}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
           >
-            <option value={2024}>2024</option>
-            <option value={2025}>2025</option>
-            <option value={2026}>2026</option>
+            {currentSeason && [currentSeason - 1, currentSeason, currentSeason + 1].map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
           </select>
           <button
             onClick={handleImport}

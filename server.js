@@ -21,6 +21,7 @@ const leaguesRouter = require('./src/routes/leagues');
 const transfersRouter = require('./src/routes/transfers');
 const settingsRouter = require('./src/routes/settings');
 const deadlinesRouter = require('./src/routes/deadlines');
+const scoringRouter = require('./src/routes/scoring');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -141,6 +142,7 @@ app.use('/api/leagues', leaguesRouter);
 app.use('/api/transfers', transfersRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/deadlines', deadlinesRouter);
+app.use('/api/scoring', scoringRouter);
 
 // ============================================
 // Error Handling

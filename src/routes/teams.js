@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
+const { getCurrentSeason } = require('../helpers/settings');
 
 // GET /api/teams - Get all teams (with optional filters)
 router.get('/', async (req, res) => {
   try {
-    const { season = 2024, userEmail } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const { userEmail } = req.query;
 
     let query = `
       SELECT
@@ -63,7 +65,8 @@ router.get('/', async (req, res) => {
 // POST /api/teams - Create new team
 router.post('/', async (req, res) => {
   try {
-    const { teamName, userEmail, season = 2024 } = req.body;
+    const { teamName, userEmail } = req.body;
+    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
 
     if (!teamName || !userEmail) {
       return res.status(400).json({
@@ -215,7 +218,8 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/roster', async (req, res) => {
   try {
     const { id } = req.params;
-    const { week, season = 2024 } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const { week } = req.query;
 
     if (!week) {
       return res.status(400).json({
@@ -256,7 +260,8 @@ router.get('/:id/roster', async (req, res) => {
 router.get('/:id/standings', async (req, res) => {
   try {
     const { id } = req.params;
-    const { week, season = 2024 } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const { week } = req.query;
 
     if (!week) {
       return res.status(400).json({
@@ -288,7 +293,8 @@ router.put('/:id/lineup', async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { week, season = 2024, lineup } = req.body;
+    const { week, lineup } = req.body;
+    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
 
     if (!week) {
       return res.status(400).json({
@@ -381,7 +387,8 @@ router.put('/:id/lineup', async (req, res) => {
 router.post('/:id/lineup/auto', async (req, res) => {
   try {
     const { id } = req.params;
-    const { week, season = 2024 } = req.body;
+    const { week } = req.body;
+    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
 
     if (!week) {
       return res.status(400).json({
@@ -421,7 +428,8 @@ router.post('/:id/lineup/auto', async (req, res) => {
 router.get('/:id/weekly-breakdown', async (req, res) => {
   try {
     const { id } = req.params;
-    const { week, season = 2024 } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const { week } = req.query;
 
     if (!week) {
       return res.status(400).json({
@@ -451,7 +459,8 @@ router.get('/:id/weekly-breakdown', async (req, res) => {
 router.get('/:id/transfers', async (req, res) => {
   try {
     const { id } = req.params;
-    const { season = 2024, limit = 20 } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const { limit = 20 } = req.query;
 
     const result = await pool.query(
       `SELECT * FROM get_transfer_history($1, $2, $3)`,

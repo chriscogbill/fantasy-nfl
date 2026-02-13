@@ -12,14 +12,13 @@ export default function TransfersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const teamId = params.id;
-  const { user, loading: authLoading, refreshUserTeam } = useAuth();
+  const { user, loading: authLoading, refreshUserTeam, currentSeason } = useAuth();
   const buyPlayerProcessed = useRef(false);
 
   const [team, setTeam] = useState(null);
   const [roster, setRoster] = useState([]);
   const [availablePlayers, setAvailablePlayers] = useState([]);
   const [currentWeek, setCurrentWeek] = useState(null);
-  const [season] = useState(2024);
 
   // Transfers apply to next week's lineup
   // During Preseason, transfers apply to Week 1
@@ -131,7 +130,7 @@ export default function TransfersPage() {
     try {
       const [teamData, playersData] = await Promise.all([
         api.getTeam(teamId),
-        api.getPlayers({ season, available: true, limit: 1000 }),
+        api.getPlayers({ season: currentSeason, available: true, limit: 1000 }),
       ]);
 
       setTeam(teamData.team);
@@ -139,7 +138,7 @@ export default function TransfersPage() {
       // Try to get target week's roster
       let rosterData;
       try {
-        rosterData = await api.getTeamRoster(teamId, { week: transferWeek, season });
+        rosterData = await api.getTeamRoster(teamId, { week: transferWeek, season: currentSeason });
       } catch (err) {
         // If roster doesn't exist for target week, return empty roster
         // (Preseason won't have any previous roster to copy from)
@@ -172,7 +171,7 @@ export default function TransfersPage() {
         playersOut: playersToSell,
         playersIn: playersToBuy,
         week: transferWeek,
-        season,
+        season: currentSeason,
       });
 
       setPreview(response.preview);
@@ -198,7 +197,7 @@ export default function TransfersPage() {
         playersOut: playersToSell,
         playersIn: playersToBuy,
         week: transferWeek,
-        season,
+        season: currentSeason,
       });
 
       setSuccess(`Transfer executed successfully for Week ${transferWeek}! Redirecting to lineup...`);
@@ -955,7 +954,7 @@ export default function TransfersPage() {
                         </div>
                         <div className="w-8"></div>
                         <div className="text-center w-16">
-                          <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${season - 1} Pts` : 'Total Pts'}</div>
+                          <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${currentSeason - 1} Pts` : 'Total Pts'}</div>
                           <div className="text-sm font-semibold text-gray-700">
                             {currentWeek === 'Preseason'
                               ? (player.prev_season_total ? parseFloat(player.prev_season_total).toFixed(1) : '0')
@@ -982,7 +981,7 @@ export default function TransfersPage() {
                         </div>
                         <div className="w-8"></div>
                         <div className="text-center w-16">
-                          <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${season - 1} Pts` : 'Total Pts'}</div>
+                          <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${currentSeason - 1} Pts` : 'Total Pts'}</div>
                           <div className="text-sm font-semibold text-gray-700">
                             {currentWeek === 'Preseason'
                               ? (player.prev_season_total ? parseFloat(player.prev_season_total).toFixed(1) : '0')
@@ -1126,7 +1125,7 @@ export default function TransfersPage() {
                   </div>
                   <div className="w-8"></div>
                   <div className="text-center w-16">
-                    <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${season - 1} Pts` : 'Total Pts'}</div>
+                    <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${currentSeason - 1} Pts` : 'Total Pts'}</div>
                     <div className="text-sm font-semibold text-gray-700">
                       {currentWeek === 'Preseason'
                         ? (player.prev_season_total ? parseFloat(player.prev_season_total).toFixed(1) : '0')

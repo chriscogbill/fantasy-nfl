@@ -10,24 +10,53 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [userTeamId, setUserTeamId] = useState(null);
   const [teamRosterComplete, setTeamRosterComplete] = useState(false);
+  const [currentSeason, setCurrentSeason] = useState(null);
 
   useEffect(() => {
-    checkAuth();
+    initializeApp();
   }, []);
 
-  // Load user's team when user changes
+  // Load user's team when user or currentSeason changes
   useEffect(() => {
-    if (user) {
+    if (user && currentSeason) {
       loadUserTeam();
-    } else {
+    } else if (!user) {
       setUserTeamId(null);
       setTeamRosterComplete(false);
     }
-  }, [user]);
+  }, [user, currentSeason]);
+
+  async function initializeApp() {
+    try {
+      // Fetch current season and auth check in parallel
+      const [seasonData, authResponse] = await Promise.allSettled([
+        api.getCurrentSeason(),
+        api.getCurrentUser()
+      ]);
+
+      if (seasonData.status === 'fulfilled') {
+        setCurrentSeason(seasonData.value);
+      } else {
+        setCurrentSeason(2024); // fallback
+      }
+
+      if (authResponse.status === 'fulfilled') {
+        setUser(authResponse.value.user);
+      } else {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Error initializing app:', error);
+      setCurrentSeason(2024);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function loadUserTeam() {
     try {
-      const data = await api.getTeams({ season: 2024 });
+      const data = await api.getTeams({ season: currentSeason });
       const myTeam = data.teams?.find(t => t.user_email === user?.email);
       if (myTeam) {
         setUserTeamId(myTeam.team_id);
@@ -48,18 +77,13 @@ export function AuthProvider({ children }) {
     await loadUserTeam();
   }
 
-  async function checkAuth() {
+  // Function to refresh season (call after season roll-forward)
+  async function refreshSeason() {
     try {
-      const response = await api.getCurrentUser();
-      setUser(response.user);
+      const season = await api.getCurrentSeason();
+      setCurrentSeason(season);
     } catch (error) {
-      // Only log if it's not a simple "not authenticated" error
-      if (!error.message?.includes('Not authenticated')) {
-        console.error('Auth check error:', error);
-      }
-      setUser(null);
-    } finally {
-      setLoading(false);
+      console.error('Error refreshing season:', error);
     }
   }
 
@@ -81,7 +105,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, checkAuth, userTeamId, teamRosterComplete, refreshUserTeam }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, userTeamId, teamRosterComplete, refreshUserTeam, currentSeason, refreshSeason }}>
       {children}
     </AuthContext.Provider>
   );

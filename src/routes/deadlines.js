@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
 const { requireAdmin } = require('../middleware/requireAuth');
+const { getCurrentSeason } = require('../helpers/settings');
 
 // GET /api/deadlines?season=2024 — Get all deadlines for a season
 router.get('/', async (req, res) => {
   try {
-    const season = parseInt(req.query.season) || 2024;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
     const result = await pool.query(
       'SELECT * FROM lineup_deadlines WHERE season = $1 ORDER BY week',
       [season]
@@ -71,7 +72,7 @@ router.put('/:season/:week', requireAdmin, async (req, res) => {
 // POST /api/deadlines/import — Admin: import deadlines from ESPN API for a season
 router.post('/import', requireAdmin, async (req, res) => {
   try {
-    const season = parseInt(req.body.season) || 2024;
+    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
     const results = [];
 
     for (let week = 1; week <= 18; week++) {

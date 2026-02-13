@@ -11,7 +11,7 @@ export default function CreateTeamPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(null);
-  const { user } = useAuth();
+  const { user, currentSeason } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export default function CreateTeamPage() {
       const response = await api.createTeam({
         teamName,
         userEmail: user.email,
-        season: 2024
+        season: currentSeason
       });
 
       // Redirect to transfers page to build initial roster
@@ -91,7 +91,7 @@ export default function CreateTeamPage() {
             <h3 className="font-semibold mb-2">Team Details</h3>
             <ul className="text-sm text-gray-700 space-y-1">
               <li>• Owner: {user.username} ({user.email})</li>
-              <li>• Season: 2024</li>
+              <li>• Season: {currentSeason || '...'}</li>
               <li>• Starting Budget: $100.0M</li>
               <li>• Roster Size: 15 players</li>
             </ul>

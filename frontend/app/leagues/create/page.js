@@ -15,7 +15,7 @@ export default function CreateLeaguePage() {
   const [loading, setLoading] = useState(false);
   const [createdLeague, setCreatedLeague] = useState(null);
   const [copied, setCopied] = useState(false);
-  const { user } = useAuth();
+  const { user, currentSeason } = useAuth();
   const router = useRouter();
 
   // Redirect if not logged in
@@ -44,7 +44,7 @@ export default function CreateLeaguePage() {
     try {
       const response = await api.createLeague({
         leagueName,
-        season: 2024,
+        season: currentSeason,
         createdBy: user.email,
         leagueAdminEmail: user.email,
         privacyType,
@@ -207,7 +207,7 @@ export default function CreateLeaguePage() {
               <h3 className="font-semibold mb-2">League Details</h3>
               <ul className="text-sm text-gray-700 space-y-1">
                 <li>• Created By: {user.username}</li>
-                <li>• Season: 2024</li>
+                <li>• Season: {currentSeason || '...'}</li>
                 <li>• Type: {privacyType === 'public' ? 'Public' : 'Private (invite-only)'}</li>
               </ul>
             </div>

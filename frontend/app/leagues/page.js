@@ -6,7 +6,7 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 
 export default function LeaguesPage() {
-  const { user } = useAuth();
+  const { user, currentSeason } = useAuth();
   const [leagues, setLeagues] = useState([]);
   const [userTeam, setUserTeam] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,19 +18,19 @@ export default function LeaguesPage() {
   const [copiedInviteCode, setCopiedInviteCode] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, [user]);
+    if (currentSeason) fetchData();
+  }, [user, currentSeason]);
 
   async function fetchData() {
     setLoading(true);
     try {
       // Fetch leagues
-      const leaguesData = await api.getLeagues({ season: 2024 });
+      const leaguesData = await api.getLeagues({ season: currentSeason });
       const allLeagues = leaguesData.leagues || [];
 
       // Fetch user's team if logged in
       if (user) {
-        const teamsData = await api.getTeams({ season: 2024 });
+        const teamsData = await api.getTeams({ season: currentSeason });
         const myTeam = teamsData.teams?.find(t => t.user_email === user.email);
         setUserTeam(myTeam || null);
 

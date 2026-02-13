@@ -15,8 +15,14 @@ const POSITION_MULTIPLIERS = {
   'DEF': 0.8   // Relatively flat distribution
 };
 
+const { getCurrentSeason } = require('./src/helpers/settings');
+
 const BASE_PRICE = 4.5;  // Minimum price for any player
-const SEASON = 2024;
+
+// Season can be overridden via CLI: node calculatePrices.js --season 2025
+const cliSeason = process.argv.find(arg => arg.startsWith('--season='))?.split('=')[1]
+  || (process.argv.indexOf('--season') !== -1 ? process.argv[process.argv.indexOf('--season') + 1] : null);
+let SEASON = cliSeason ? parseInt(cliSeason) : null; // null means use getCurrentSeason()
 
 async function calculateAveragePoints(playerId, startWeek, endWeek) {
   const query = `
@@ -184,7 +190,11 @@ async function showTopPlayersByPosition(prices) {
 
 async function run() {
   try {
-    console.log('=== Player Pricing Calculator ===');
+    // Resolve season if not set via CLI
+    if (!SEASON) {
+      SEASON = await getCurrentSeason(pool);
+    }
+    console.log(`=== Player Pricing Calculator (Season ${SEASON}) ===`);
     
     const prices = await calculateAllPrices(1, 11);
     

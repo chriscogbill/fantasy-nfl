@@ -26,7 +26,8 @@ class SleeperProvider {
       name: `${player.first_name || ''} ${player.last_name || ''}`.trim(),
       position: player.position,
       team: player.team,
-      status: player.status || 'active'
+      status: player.status || 'active',
+      search_rank: player.search_rank || null,
     }));
   }
 
@@ -205,14 +206,15 @@ async function importPlayers() {
       // Insert with sleeper_id
       try {
         await pool.query(
-          `INSERT INTO players (name, position, team, status, sleeper_id)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (sleeper_id) DO UPDATE 
-           SET name = EXCLUDED.name, 
-               position = EXCLUDED.position, 
-               team = EXCLUDED.team, 
-               status = EXCLUDED.status`,
-          [player.name, player.position, player.team, player.status, player.sleeper_id]
+          `INSERT INTO players (name, position, team, status, sleeper_id, search_rank)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (sleeper_id) DO UPDATE
+           SET name = EXCLUDED.name,
+               position = EXCLUDED.position,
+               team = EXCLUDED.team,
+               status = EXCLUDED.status,
+               search_rank = EXCLUDED.search_rank`,
+          [player.name, player.position, player.team, player.status, player.sleeper_id, player.search_rank]
         );
         imported++;
       } catch (error) {

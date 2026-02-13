@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
+const { getCurrentSeason } = require('../helpers/settings');
 
 // GET /api/leagues - Get all leagues
 router.get('/', async (req, res) => {
   try {
-    const { season = 2024, status } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const { status } = req.query;
 
     let query = `
       SELECT
@@ -46,13 +48,13 @@ router.post('/', async (req, res) => {
   try {
     const {
       leagueName,
-      season = 2024,
       createdBy,
       leagueAdminEmail,
       startWeek = 1,
       endWeek = 18,
       privacyType = 'public'
     } = req.body;
+    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
 
     if (!leagueName) {
       return res.status(400).json({
@@ -158,7 +160,8 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/standings', async (req, res) => {
   try {
     const { id } = req.params;
-    const { week, season = 2024 } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const { week } = req.query;
 
     if (!week) {
       return res.status(400).json({
@@ -204,7 +207,7 @@ router.get('/:id/standings', async (req, res) => {
 router.get('/:id/history', async (req, res) => {
   try {
     const { id } = req.params;
-    const { season = 2024 } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
 
     const result = await pool.query(
       `SELECT * FROM get_league_history($1, $2)`,

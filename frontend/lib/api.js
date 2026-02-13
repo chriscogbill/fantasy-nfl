@@ -148,7 +148,7 @@ class ApiClient {
     });
   }
 
-  async validateRoster(playerIds, season = 2024) {
+  async validateRoster(playerIds, season) {
     return this.request('/api/transfers/validate-roster', {
       method: 'POST',
       body: JSON.stringify({ playerIds, season }),
@@ -255,6 +255,85 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ season }),
     });
+  }
+
+  // Season Management
+  async clearSeasonData(season) {
+    return this.request('/api/settings/clear-season-data', {
+      method: 'POST',
+      body: JSON.stringify({ season }),
+    });
+  }
+
+  async rollForwardSeason() {
+    return this.request('/api/settings/roll-forward-season', {
+      method: 'POST',
+    });
+  }
+
+  async rollBackSeason() {
+    return this.request('/api/settings/roll-back-season', {
+      method: 'POST',
+    });
+  }
+
+  async copyConstraints() {
+    return this.request('/api/settings/setup-season/copy-constraints', {
+      method: 'POST',
+    });
+  }
+
+  // Scoring Rules
+  async getScoringRules() {
+    return this.request('/api/scoring');
+  }
+
+  async updateScoringRule(id, points) {
+    return this.request(`/api/scoring/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ points }),
+    });
+  }
+
+  async getArchivedScoringRules(season) {
+    return this.request(`/api/scoring/archive?season=${season}`);
+  }
+
+  // Player Prices (initial setup)
+  async setInitialPrices(params = {}) {
+    return this.request('/api/players/set-initial-prices', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async previewInitialPrices(params = {}) {
+    return this.request('/api/players/preview-initial-prices', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async getPreviousSeasonPrices() {
+    return this.request('/api/players/previous-season-prices');
+  }
+
+  async copyPriorYearPrices() {
+    return this.request('/api/players/copy-prior-year-prices', {
+      method: 'POST',
+    });
+  }
+
+  async saveSuggestedPrices(prices) {
+    return this.request('/api/players/save-suggested-prices', {
+      method: 'POST',
+      body: JSON.stringify({ prices }),
+    });
+  }
+
+  // Player Season Totals
+  async getPlayerSeasonTotals(season, format = 'ppr') {
+    return this.request(`/api/players/season-totals?season=${season}&format=${format}`);
   }
 }
 

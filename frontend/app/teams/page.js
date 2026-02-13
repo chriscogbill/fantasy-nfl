@@ -8,16 +8,16 @@ import { useAuth } from '../../lib/AuthContext';
 export default function TeamsPage() {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, currentSeason } = useAuth();
 
   useEffect(() => {
-    fetchTeams();
-  }, []);
+    if (currentSeason) fetchTeams();
+  }, [currentSeason]);
 
   async function fetchTeams() {
     setLoading(true);
     try {
-      const data = await api.getTeams({ season: 2024 });
+      const data = await api.getTeams({ season: currentSeason });
       setTeams(data.teams || []);
     } catch (error) {
       console.error('Error fetching teams:', error);
@@ -40,7 +40,7 @@ export default function TeamsPage() {
             </Link>
           )}
           <div className="text-sm text-gray-600">
-            {teams.length} team{teams.length !== 1 ? 's' : ''} • 2024 Season
+            {teams.length} team{teams.length !== 1 ? 's' : ''} • {currentSeason} Season
           </div>
         </div>
       </div>

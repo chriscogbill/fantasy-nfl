@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
+const { getCurrentSeason } = require('../helpers/settings');
+const { requireAdmin } = require('../middleware/requireAuth');
 
 // GET /api/players - Search and filter players
 // Query params: position, minPrice, maxPrice, search, season
@@ -11,10 +13,10 @@ router.get('/', async (req, res) => {
       minPrice,
       maxPrice,
       search,
-      season = 2024,
       limit = 50,
       offset = 0
     } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
 
     // Get current week for calculating average points
     const weekResult = await pool.query(
@@ -49,11 +51,325 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/players/previous-season-prices - Get player prices from the previous season
+router.get('/previous-season-prices', requireAdmin, async (req, res) => {
+  try {
+    const currentSeason = await getCurrentSeason(pool);
+    const previousSeason = currentSeason - 1;
+
+    // Try archive first, then fall back to current prices if previous season data is still there
+    let result = await pool.query(
+      `SELECT player_id, final_price as price
+       FROM player_prices_archive
+       WHERE season = $1 AND record_type = 'current_price'`,
+      [previousSeason]
+    );
+
+    if (result.rows.length === 0) {
+      // Fall back to player_current_prices if not yet archived
+      result = await pool.query(
+        `SELECT player_id, current_price as price
+         FROM player_current_prices
+         WHERE season = $1`,
+        [previousSeason]
+      );
+    }
+
+    // Build a map
+    const prices = {};
+    result.rows.forEach(row => {
+      prices[row.player_id] = parseFloat(row.price);
+    });
+
+    res.json({
+      success: true,
+      season: previousSeason,
+      count: Object.keys(prices).length,
+      prices
+    });
+  } catch (error) {
+    console.error('Error fetching previous season prices:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/players/copy-prior-year-prices - Copy previous season prices to current season (admin only)
+router.post('/copy-prior-year-prices', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const currentSeason = await getCurrentSeason(client);
+    const previousSeason = currentSeason - 1;
+
+    // Get previous season prices (archive first, then current)
+    let prevResult = await client.query(
+      `SELECT player_id, final_price as price
+       FROM player_prices_archive
+       WHERE season = $1 AND record_type = 'current_price'`,
+      [previousSeason]
+    );
+
+    if (prevResult.rows.length === 0) {
+      prevResult = await client.query(
+        `SELECT player_id, current_price as price
+         FROM player_current_prices
+         WHERE season = $1`,
+        [previousSeason]
+      );
+    }
+
+    if (prevResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        error: `No prices found for ${previousSeason} season`
+      });
+    }
+
+    let updated = 0;
+    for (const row of prevResult.rows) {
+      await client.query(
+        `INSERT INTO player_current_prices (player_id, current_price, algorithm_price, season, last_updated)
+         VALUES ($1, $2, $2, $3, CURRENT_TIMESTAMP)
+         ON CONFLICT (player_id) DO UPDATE SET
+           current_price = $2, algorithm_price = $2, last_updated = CURRENT_TIMESTAMP`,
+        [row.player_id, parseFloat(row.price), currentSeason]
+      );
+      updated++;
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `Copied ${updated} player prices from ${previousSeason} to ${currentSeason}`,
+      playersCopied: updated,
+      fromSeason: previousSeason,
+      toSeason: currentSeason
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error copying prior year prices:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Default algorithm parameters
+const DEFAULT_ALGORITHM_PARAMS = {
+  positionMultipliers: { QB: 0.9, RB: 1.2, WR: 1.1, TE: 1.3, K: 0.7, DEF: 0.8 },
+  minPrice: 4.5,
+  maxPrice: 15.0,
+  minGames: 3,
+};
+
+// Shared pricing algorithm logic
+async function runPricingAlgorithm(dbClient, params = {}) {
+  const positionMultipliers = params.positionMultipliers || DEFAULT_ALGORITHM_PARAMS.positionMultipliers;
+  const MIN_PRICE = params.minPrice != null ? parseFloat(params.minPrice) : DEFAULT_ALGORITHM_PARAMS.minPrice;
+  const MAX_PRICE = params.maxPrice != null ? parseFloat(params.maxPrice) : DEFAULT_ALGORITHM_PARAMS.maxPrice;
+  const MIN_GAMES = params.minGames != null ? parseInt(params.minGames) : DEFAULT_ALGORITHM_PARAMS.minGames;
+
+  const currentSeason = await getCurrentSeason(dbClient);
+  const previousSeason = currentSeason - 1;
+
+  // Get previous season totals
+  const totalsResult = await dbClient.query(
+    `SELECT pst.player_id, pst.total_points, pst.games_played, p.position
+     FROM player_season_totals pst
+     JOIN players p ON pst.player_id = p.player_id
+     WHERE pst.season = $1 AND pst.league_format = 'ppr'`,
+    [previousSeason]
+  );
+
+  const playerStats = new Map();
+  totalsResult.rows.forEach(row => {
+    playerStats.set(row.player_id, row);
+  });
+
+  // Get all active players
+  const playersResult = await dbClient.query(
+    `SELECT player_id, position FROM players WHERE status != 'Inactive'`
+  );
+
+  // Calculate prices by position percentile
+  const positionGroups = {};
+  playersResult.rows.forEach(player => {
+    const stats = playerStats.get(player.player_id);
+    const avgPts = stats && stats.games_played >= MIN_GAMES
+      ? parseFloat(stats.total_points) / stats.games_played
+      : 0;
+
+    if (!positionGroups[player.position]) positionGroups[player.position] = [];
+    positionGroups[player.position].push({
+      player_id: player.player_id,
+      position: player.position,
+      avg_points: avgPts,
+      games_played: stats?.games_played || 0
+    });
+  });
+
+  const prices = {};
+
+  Object.entries(positionGroups).forEach(([position, players]) => {
+    players.sort((a, b) => b.avg_points - a.avg_points);
+    const multiplier = positionMultipliers[position] || 1.0;
+
+    players.forEach((player, index) => {
+      let price;
+      if (player.avg_points === 0) {
+        price = MIN_PRICE;
+      } else {
+        const percentile = 1 - (index / players.length);
+        const rawPrice = MIN_PRICE + (MAX_PRICE - MIN_PRICE) * percentile * multiplier;
+        price = Math.max(MIN_PRICE, Math.round(rawPrice * 10) / 10);
+      }
+
+      prices[player.player_id] = price;
+    });
+  });
+
+  return { prices, previousSeason, currentSeason };
+}
+
+// POST /api/players/preview-initial-prices - Run pricing algorithm and return suggested prices without saving
+router.post('/preview-initial-prices', requireAdmin, async (req, res) => {
+  try {
+    const { prices, previousSeason, currentSeason } = await runPricingAlgorithm(pool, req.body);
+
+    res.json({
+      success: true,
+      previousSeason,
+      currentSeason,
+      count: Object.keys(prices).length,
+      suggestedPrices: prices
+    });
+  } catch (error) {
+    console.error('Error previewing initial prices:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/players/save-suggested-prices - Save a map of suggested prices (admin only)
+router.post('/save-suggested-prices', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const { prices } = req.body;
+    if (!prices || typeof prices !== 'object' || Object.keys(prices).length === 0) {
+      return res.status(400).json({ success: false, error: 'prices map is required' });
+    }
+
+    const currentSeason = await getCurrentSeason(client);
+
+    await client.query('BEGIN');
+
+    let updated = 0;
+    for (const [playerId, price] of Object.entries(prices)) {
+      const priceVal = parseFloat(price);
+      if (isNaN(priceVal)) continue;
+
+      await client.query(
+        `INSERT INTO player_current_prices (player_id, current_price, algorithm_price, season, last_updated)
+         VALUES ($1, $2, $2, $3, CURRENT_TIMESTAMP)
+         ON CONFLICT (player_id) DO UPDATE SET
+           current_price = $2, algorithm_price = $2, last_updated = CURRENT_TIMESTAMP`,
+        [playerId, priceVal, currentSeason]
+      );
+      updated++;
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `Saved prices for ${updated} players`,
+      playersUpdated: updated,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error saving suggested prices:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+// POST /api/players/set-initial-prices - Run pricing algorithm and save (admin only)
+router.post('/set-initial-prices', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const { prices, previousSeason, currentSeason } = await runPricingAlgorithm(client, req.body);
+
+    // UPSERT into player_current_prices
+    let updated = 0;
+    for (const [playerId, price] of Object.entries(prices)) {
+      await client.query(
+        `INSERT INTO player_current_prices (player_id, current_price, algorithm_price, last_updated)
+         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+         ON CONFLICT (player_id) DO UPDATE SET
+           current_price = $2, algorithm_price = $3, last_updated = CURRENT_TIMESTAMP`,
+        [playerId, price, price]
+      );
+      updated++;
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `Set initial prices for ${updated} players based on ${previousSeason} season totals`,
+      playersUpdated: updated,
+      previousSeason,
+      currentSeason
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error setting initial prices:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+// GET /api/players/season-totals - Get player season totals
+router.get('/season-totals', async (req, res) => {
+  try {
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const format = req.query.format || 'ppr';
+
+    const result = await pool.query(
+      `SELECT pst.*, p.name, p.position, p.team
+       FROM player_season_totals pst
+       JOIN players p ON pst.player_id = p.player_id
+       WHERE pst.season = $1 AND pst.league_format = $2
+       ORDER BY pst.total_points DESC`,
+      [season, format]
+    );
+
+    res.json({
+      success: true,
+      count: result.rows.length,
+      season,
+      totals: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching season totals:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/players/:id - Get specific player details
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { season = 2024 } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
 
     const result = await pool.query(
       `SELECT
@@ -96,7 +412,8 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/stats', async (req, res) => {
   try {
     const { id } = req.params;
-    const { season = 2024, format = 'ppr' } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const format = req.query.format || 'ppr';
 
     // Get current week setting to determine past vs future
     const weekResult = await pool.query(
@@ -255,7 +572,8 @@ router.get('/:id/stats', async (req, res) => {
 router.get('/:id/price-history', async (req, res) => {
   try {
     const { id } = req.params;
-    const { season = 2024, limit = 20 } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const { limit = 20 } = req.query;
 
     const result = await pool.query(
       `SELECT
@@ -288,7 +606,8 @@ router.get('/:id/price-history', async (req, res) => {
 router.get('/top/:position', async (req, res) => {
   try {
     const { position } = req.params;
-    const { season = 2024, limit = 20 } = req.query;
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const { limit = 20 } = req.query;
 
     const result = await pool.query(
       `SELECT
@@ -322,8 +641,6 @@ router.get('/top/:position', async (req, res) => {
   }
 });
 
-const { requireAdmin } = require('../middleware/requireAuth');
-
 // PUT /api/players/:id/price - Adjust player price (admin only)
 router.put('/:id/price', requireAdmin, async (req, res) => {
   const client = await pool.connect();
@@ -332,7 +649,7 @@ router.put('/:id/price', requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { change, season, week, day } = req.body;
 
-    if (change === undefined || !season || !week || !day) {
+    if (change === undefined || !season || (week === undefined || week === null) || (day === undefined || day === null)) {
       return res.status(400).json({
         success: false,
         error: 'change, season, week, and day are required'

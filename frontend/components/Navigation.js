@@ -9,7 +9,7 @@ import { useAuth } from '../lib/AuthContext';
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout, userTeamId, teamRosterComplete } = useAuth();
+  const { user, logout, userTeamId, teamRosterComplete, currentSeason } = useAuth();
   const [currentWeek, setCurrentWeek] = useState(null);
   const [currentYear, setCurrentYear] = useState(null);
   const [currentDay, setCurrentDay] = useState(null);
@@ -32,21 +32,6 @@ export default function Navigation() {
       setCurrentDay(dayResponse?.value || 1);
     } catch (error) {
       console.error('Error loading current settings:', error);
-    }
-  }
-
-  async function handleYearChange(newYear) {
-    setIsUpdating(true);
-    try {
-      await api.updateSetting('current_season', newYear);
-      setCurrentYear(newYear);
-      // Reload the page to refresh data
-      window.location.reload();
-    } catch (error) {
-      console.error('Error updating year:', error);
-      alert('Failed to update year');
-    } finally {
-      setIsUpdating(false);
     }
   }
 
@@ -123,7 +108,11 @@ export default function Navigation() {
 
   // Admin menu items (separate from main nav)
   const adminItems = [
-    { href: '/players/prices', label: 'Player Prices' },
+    { href: '/admin/settings', label: 'Season Roll Forward' },
+    { href: '/admin/season', label: 'Season Setup' },
+    { href: '/admin/scoring', label: 'Scoring Rules' },
+    { href: '/admin/starting-prices', label: 'Starting Prices' },
+    { href: '/players/prices', label: 'Price Changes' },
     { href: '/admin/deadlines', label: 'Deadlines' },
     { href: '/teams', label: 'All Teams' }
   ];
@@ -245,27 +234,12 @@ export default function Navigation() {
             <div className="flex items-center">
               {user?.role === 'admin' ? (
                 <div className="flex items-center gap-4">
-                  {/* Year Selector */}
+                  {/* Year Display (read-only — change via Admin Settings page) */}
                   <div className="flex items-center gap-1">
                     <span className="text-xs text-gray-500">Year:</span>
-                    <select
-                      value={currentYear || ''}
-                      onChange={(e) => handleYearChange(e.target.value)}
-                      disabled={isUpdating || currentYear === null}
-                      className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100"
-                    >
-                      {currentYear === null ? (
-                        <option value="">...</option>
-                      ) : (
-                        <>
-                          {[2024, 2025, 2026].map((year) => (
-                            <option key={year} value={year}>
-                              {year}
-                            </option>
-                          ))}
-                        </>
-                      )}
-                    </select>
+                    <span className="px-2 py-1 text-sm font-semibold text-gray-900">
+                      {currentYear || '...'}
+                    </span>
                   </div>
 
                   {/* Week Selector */}

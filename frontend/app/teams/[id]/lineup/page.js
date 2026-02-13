@@ -11,7 +11,7 @@ export default function LineupPage() {
   const params = useParams();
   const router = useRouter();
   const teamId = params.id;
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, currentSeason } = useAuth();
 
   const [team, setTeam] = useState(null);
   const [currentWeek, setCurrentWeek] = useState(null);
@@ -63,11 +63,11 @@ export default function LineupPage() {
     setLoading(true);
     setError('');
     try {
-      const [week, season, dayResponse] = await Promise.all([
+      const [week, dayResponse] = await Promise.all([
         api.getCurrentWeek(),
-        api.getCurrentSeason(),
         api.getSetting('current_day'),
       ]);
+      const season = currentSeason;
       setCurrentWeek(week);
       const day = parseInt(dayResponse.value) || 1;
       setCurrentDay(day);
@@ -136,7 +136,7 @@ export default function LineupPage() {
 
       await api.setTeamLineup(teamId, {
         week: lineupWeek,
-        season: 2024,
+        season: currentSeason,
         lineup: lineupArray,
       });
 
