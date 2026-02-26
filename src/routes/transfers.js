@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
 const { getCurrentSeason } = require('../helpers/settings');
+const { requireTeamOwnership } = require('../middleware/requireAuth');
 
 // POST /api/transfers/preview - Preview a transfer (calculate costs)
-router.post('/preview', async (req, res) => {
+router.post('/preview', requireTeamOwnership({ from: 'body' }), async (req, res) => {
   try {
     const { teamId, playersOut = [], playersIn = [], week } = req.body;
     const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
@@ -54,7 +55,7 @@ router.post('/preview', async (req, res) => {
 });
 
 // POST /api/transfers/execute - Execute a transfer (buy/sell players)
-router.post('/execute', async (req, res) => {
+router.post('/execute', requireTeamOwnership({ from: 'body' }), async (req, res) => {
   const client = await pool.connect();
 
   try {

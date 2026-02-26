@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
 const { getCurrentSeason } = require('../helpers/settings');
+const { requireTeamOwnership } = require('../middleware/requireAuth');
 
 // GET /api/leagues - Get all leagues
 router.get('/', async (req, res) => {
@@ -236,7 +237,7 @@ router.get('/:id/history', async (req, res) => {
 });
 
 // POST /api/leagues/join-by-code - Join a league using invite code
-router.post('/join-by-code', async (req, res) => {
+router.post('/join-by-code', requireTeamOwnership({ from: 'body' }), async (req, res) => {
   try {
     const { teamId, inviteCode } = req.body;
 
@@ -303,7 +304,7 @@ router.post('/join-by-code', async (req, res) => {
 });
 
 // POST /api/leagues/:id/join - Join a league with a team
-router.post('/:id/join', async (req, res) => {
+router.post('/:id/join', requireTeamOwnership({ from: 'body' }), async (req, res) => {
   try {
     const { id } = req.params;
     const { teamId, inviteCode } = req.body;
@@ -369,7 +370,7 @@ router.post('/:id/join', async (req, res) => {
 });
 
 // DELETE /api/leagues/:id/leave - Leave a league
-router.delete('/:id/leave', async (req, res) => {
+router.delete('/:id/leave', requireTeamOwnership({ from: 'body' }), async (req, res) => {
   try {
     const { id } = req.params;
     const { teamId } = req.body;

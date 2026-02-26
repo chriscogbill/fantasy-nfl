@@ -43,7 +43,7 @@ export default function PlayerPricesPage() {
           api.getSetting('current_week'),
           api.getSetting('current_day'),
         ]);
-        setSeason(parseInt(seasonResp.value) || currentSeason || 2024);
+        setSeason(parseInt(seasonResp.value) || currentSeason || new Date().getFullYear());
         setWeek(weekResp.value === 'Preseason' ? 'Preseason' : parseInt(weekResp.value));
         setDay(parseInt(dayResp.value) || 1);
         setSettingsLoaded(true);
@@ -65,7 +65,7 @@ export default function PlayerPricesPage() {
   async function fetchPlayers() {
     setLoading(true);
     try {
-      const params = { limit: 50, season: season || currentSeason || 2024 };
+      const params = { limit: 50, season: season || currentSeason || new Date().getFullYear() };
       if (filters.position) params.position = filters.position;
       if (filters.search) params.search = filters.search;
       if (filters.minPrice) params.minPrice = filters.minPrice;

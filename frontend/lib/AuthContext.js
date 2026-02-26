@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
       if (seasonData.status === 'fulfilled') {
         setCurrentSeason(seasonData.value);
       } else {
-        setCurrentSeason(2024); // fallback
+        setCurrentSeason(new Date().getFullYear()); // fallback
       }
 
       if (authResponse.status === 'fulfilled') {
@@ -47,7 +47,7 @@ export function AuthProvider({ children }) {
       }
     } catch (error) {
       console.error('Error initializing app:', error);
-      setCurrentSeason(2024);
+      setCurrentSeason(new Date().getFullYear());
       setUser(null);
     } finally {
       setLoading(false);

@@ -6,13 +6,19 @@ const { Pool } = require('pg');
 const pool = require('./src/db/connection');
 
 // Separate pool for the shared auth/session database (cogsAuth)
-const authPool = new Pool({
-  user: process.env.DB_USER || 'chriscogbill',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.AUTH_DB_NAME || 'cogsAuth',
-  password: process.env.DB_PASSWORD || '',
-  port: parseInt(process.env.DB_PORT || '5432'),
-});
+// Supports AUTH_DATABASE_URL (used by Railway/Render) or individual env vars for local dev
+const authPool = process.env.AUTH_DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.AUTH_DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    })
+  : new Pool({
+      user: process.env.DB_USER || 'chriscogbill',
+      host: process.env.DB_HOST || 'localhost',
+      database: process.env.AUTH_DB_NAME || 'cogsAuth',
+      password: process.env.DB_PASSWORD || '',
+      port: parseInt(process.env.DB_PORT || '5432'),
+    });
 
 // Import routes (auth is handled by the cogs-auth service)
 const playersRouter = require('./src/routes/players');
@@ -162,7 +168,7 @@ app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
     success: false,
-    error: err.message || 'Internal server error'
+    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : (err.message || 'Internal server error')
   });
 });
 

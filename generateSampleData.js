@@ -4,8 +4,9 @@
 // ============================================
 
 const pool = require('./src/db/connection');
+const { getCurrentSeason } = require('./src/helpers/settings');
 
-const SEASON = 2024;
+let SEASON;
 const START_WEEK = 1;
 
 // Sample team names
@@ -367,7 +368,10 @@ async function showSampleData() {
 async function run() {
   try {
     console.log('=== Fantasy NFL Sample Data Generator ===');
-    
+
+    SEASON = await getCurrentSeason(pool);
+    console.log(`Using season: ${SEASON}`);
+
     // Create sample data
     const leagueIds = await createLeagues();
     const teamIds = await createTeams();

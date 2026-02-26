@@ -28,7 +28,7 @@ export default function Navigation() {
         api.getSetting('current_day')
       ]);
       setCurrentWeek(week);
-      setCurrentYear(yearResponse?.value || 2024);
+      setCurrentYear(yearResponse?.value || new Date().getFullYear());
       setCurrentDay(dayResponse?.value || 1);
     } catch (error) {
       console.error('Error loading current settings:', error);

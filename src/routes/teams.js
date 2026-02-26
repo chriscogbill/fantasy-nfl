@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
 const { getCurrentSeason } = require('../helpers/settings');
+const { requireTeamOwnership } = require('../middleware/requireAuth');
 
 // GET /api/teams - Get all teams (with optional filters)
 router.get('/', async (req, res) => {
@@ -288,7 +289,7 @@ router.get('/:id/standings', async (req, res) => {
 });
 
 // PUT /api/teams/:id/lineup - Manually set starting lineup
-router.put('/:id/lineup', async (req, res) => {
+router.put('/:id/lineup', requireTeamOwnership({ from: 'params' }), async (req, res) => {
   const client = await pool.connect();
 
   try {
@@ -384,7 +385,7 @@ router.put('/:id/lineup', async (req, res) => {
 });
 
 // POST /api/teams/:id/lineup/auto - Auto-set optimal starting lineup
-router.post('/:id/lineup/auto', async (req, res) => {
+router.post('/:id/lineup/auto', requireTeamOwnership({ from: 'params' }), async (req, res) => {
   try {
     const { id } = req.params;
     const { week } = req.body;

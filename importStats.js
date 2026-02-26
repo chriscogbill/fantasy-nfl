@@ -6,6 +6,7 @@
 // ============================================
 
 const pool = require('./src/db/connection');
+const { getCurrentSeason } = require('./src/helpers/settings');
 
 // ============================================
 // Sleeper Provider (simplified version)
@@ -297,10 +298,15 @@ async function setup() {
   }
 }
 
-async function importAll(week = 1, season = 2024, skipPlayers = false) {
+async function importAll(week = 1, season = null, skipPlayers = false) {
   const connected = await setup();
   if (!connected) return;
-  
+
+  if (!season) {
+    season = await getCurrentSeason(pool);
+  }
+  console.log(`Using season: ${season}`);
+
   console.log('\n=== Starting Import ===\n');
   
   // Step 1: Import players (optional - skip if already done)
@@ -319,10 +325,15 @@ async function importAll(week = 1, season = 2024, skipPlayers = false) {
   await pool.end();
 }
 
-async function importWeekRange(startWeek, endWeek, season = 2024) {
+async function importWeekRange(startWeek, endWeek, season = null) {
   const connected = await setup();
   if (!connected) return;
-  
+
+  if (!season) {
+    season = await getCurrentSeason(pool);
+  }
+  console.log(`Using season: ${season}`);
+
   console.log('\n=== Starting Batch Import ===\n');
   
   await importMultipleWeeks(startWeek, endWeek, season);
@@ -338,10 +349,10 @@ async function importWeekRange(startWeek, endWeek, season = 2024) {
 // ============================================
 
 // Option 1: Import a single week
-// importAll(1, 2024, true)  // Skip player import, just get stats
+// importAll(1, null, true)  // Skip player import, just get stats (uses current_season from DB)
 
 // Option 2: Import multiple weeks at once (RECOMMENDED)
-importWeekRange(2, 11, 2024)  // Import remaining weeks (fast!) 
+importWeekRange(2, 11)  // Import remaining weeks (uses current_season from DB)
   .then(() => {
     console.log('Done!');
     process.exit(0);
@@ -359,10 +370,11 @@ importWeekRange(2, 11, 2024)  // Import remaining weeks (fast!)
 // 3. Run: npm install pg node-fetch
 // 4. Run: node importStats.js
 // 
-// To import a range of weeks:
-// importWeekRange(1, 11, 2024)   // Imports weeks 1-11
-// importWeekRange(12, 18, 2024)  // Imports weeks 12-18
+// To import a range of weeks (season auto-detected from DB):
+// importWeekRange(1, 11)         // Imports weeks 1-11
+// importWeekRange(12, 18)        // Imports weeks 12-18
+// importWeekRange(1, 11, 2025)   // Explicit season override
 //
 // To import a single week:
-// importAll(5, 2024, true)   // Week 5, skip players
+// importAll(5, null, true)       // Week 5, skip players
 // ============================================

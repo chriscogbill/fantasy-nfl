@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   bundlePagesRouterDependencies: true,
+  output: 'standalone',
 };
 
 export default nextConfig;
