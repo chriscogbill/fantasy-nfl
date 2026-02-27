@@ -10,6 +10,7 @@ frontend/node_modules/
 # Next.js
 frontend/.next/
 frontend/out/
+frontend/package-lock.json
 
 # Logs
 *.log
