@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
 const { getCurrentSeason } = require('../helpers/settings');
-const { requireTeamOwnership } = require('../middleware/requireAuth');
+const { requireAuth, requireTeamOwnership } = require('../middleware/requireAuth');
+const { stripPiiForAnon } = require('../middleware/stripPiiForAnon');
+
+// Public read routes stay accessible (spectator profiles) but must not
+// leak email addresses to anonymous callers.
+router.use(stripPiiForAnon);
 
 // GET /api/teams - Get all teams (with optional filters)
 router.get('/', async (req, res) => {
@@ -64,15 +69,18 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/teams - Create new team
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
-    const { teamName, userEmail } = req.body;
+    const { teamName } = req.body;
+    // Identity comes from the authenticated session, NEVER the request
+    // body — otherwise anyone could create/squat a team as any user.
+    const userEmail = req.session.email;
     const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
 
-    if (!teamName || !userEmail) {
+    if (!teamName) {
       return res.status(400).json({
         success: false,
-        error: 'teamName and userEmail are required'
+        error: 'teamName is required'
       });
     }
 

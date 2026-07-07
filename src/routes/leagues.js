@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
 const { getCurrentSeason } = require('../helpers/settings');
-const { requireTeamOwnership } = require('../middleware/requireAuth');
+const { requireAuth, requireTeamOwnership } = require('../middleware/requireAuth');
+const { stripPiiForAnon } = require('../middleware/stripPiiForAnon');
+
+// Public read routes stay accessible but must not leak email addresses
+// to anonymous callers.
+router.use(stripPiiForAnon);
 
 // GET /api/leagues - Get all leagues
 router.get('/', async (req, res) => {
@@ -45,16 +50,18 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/leagues - Create new league
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
     const {
       leagueName,
-      createdBy,
-      leagueAdminEmail,
       startWeek = 1,
       endWeek = 18,
       privacyType = 'public'
     } = req.body;
+    // Creator + admin come from the authenticated session, NEVER the body
+    // — otherwise anyone could create a league owned by any email.
+    const createdBy = req.session.email;
+    const adminEmail = req.session.email;
     const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
 
     if (!leagueName) {
@@ -63,9 +70,6 @@ router.post('/', async (req, res) => {
         error: 'leagueName is required'
       });
     }
-
-    // Default admin email to creator if not specified
-    const adminEmail = leagueAdminEmail || createdBy || null;
 
     // Generate invite code for private leagues
     let inviteCode = null;
