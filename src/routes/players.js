@@ -190,9 +190,9 @@ async function runPricingAlgorithm(dbClient, params = {}) {
     playerStats.set(row.player_id, row);
   });
 
-  // Get all active players
+  // Get all active players (search_rank drives the rookie pricing pass)
   const playersResult = await dbClient.query(
-    `SELECT player_id, position FROM players WHERE status != 'Inactive'`
+    `SELECT player_id, position, search_rank FROM players WHERE status != 'Inactive'`
   );
 
   // Calculate prices by position percentile
@@ -207,12 +207,14 @@ async function runPricingAlgorithm(dbClient, params = {}) {
     positionGroups[player.position].push({
       player_id: player.player_id,
       position: player.position,
+      search_rank: player.search_rank,
       avg_points: avgPts,
       games_played: stats?.games_played || 0
     });
   });
 
   const prices = {};
+  let rookiesPricedByRank = 0;
 
   Object.entries(positionGroups).forEach(([position, players]) => {
     players.sort((a, b) => b.avg_points - a.avg_points);
@@ -230,21 +232,68 @@ async function runPricingAlgorithm(dbClient, params = {}) {
 
       prices[player.player_id] = price;
     });
+
+    // Rookie/no-history pass: players with no prior-season sample would
+    // all land on MIN_PRICE, making every hyped rookie a league-breaking
+    // bargain (e.g. a first-round RB at $4.5M). Sleeper's search_rank is
+    // a consensus-expectation signal we already import — price zero-
+    // history players by linear interpolation between the two PRICED
+    // same-position veterans bracketing their rank. Above the best
+    // veteran → capped at that veteran's price (the admin starting-
+    // prices page is the editorial pass for genuine outliers); no
+    // meaningful rank (Sleeper sentinel 9999999 / null) → MIN_PRICE.
+    const RANK_SENTINEL = 3000; // beyond this, "ranked" is meaningless
+    const ladder = players
+      .filter(pl =>
+        pl.avg_points > 0 &&
+        Number.isFinite(pl.search_rank) &&
+        pl.search_rank > 0 &&
+        pl.search_rank < RANK_SENTINEL
+      )
+      .map(pl => ({ rank: pl.search_rank, price: prices[pl.player_id] }))
+      .sort((a, b) => a.rank - b.rank);
+
+    if (ladder.length >= 2) {
+      players.forEach(player => {
+        if (player.avg_points !== 0) return;
+        const rank = player.search_rank;
+        if (!Number.isFinite(rank) || rank <= 0 || rank >= RANK_SENTINEL) return;
+
+        let price;
+        if (rank <= ladder[0].rank) {
+          price = ladder[0].price;
+        } else if (rank >= ladder[ladder.length - 1].rank) {
+          return; // ranked below every scored veteran — MIN_PRICE stands
+        } else {
+          let hi = ladder.findIndex(step => step.rank >= rank);
+          const upper = ladder[hi];
+          const lower = ladder[hi - 1];
+          const t = (rank - lower.rank) / (upper.rank - lower.rank);
+          price = lower.price + (upper.price - lower.price) * t;
+        }
+        const rounded = Math.max(MIN_PRICE, Math.round(price * 10) / 10);
+        if (rounded > MIN_PRICE) {
+          prices[player.player_id] = rounded;
+          rookiesPricedByRank++;
+        }
+      });
+    }
   });
 
-  return { prices, previousSeason, currentSeason };
+  return { prices, previousSeason, currentSeason, rookiesPricedByRank };
 }
 
 // POST /api/players/preview-initial-prices - Run pricing algorithm and return suggested prices without saving
 router.post('/preview-initial-prices', requireAdmin, async (req, res) => {
   try {
-    const { prices, previousSeason, currentSeason } = await runPricingAlgorithm(pool, req.body);
+    const { prices, previousSeason, currentSeason, rookiesPricedByRank } = await runPricingAlgorithm(pool, req.body);
 
     res.json({
       success: true,
       previousSeason,
       currentSeason,
       count: Object.keys(prices).length,
+      rookiesPricedByRank,
       suggestedPrices: prices
     });
   } catch (error) {
@@ -305,7 +354,7 @@ router.post('/set-initial-prices', requireAdmin, async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const { prices, previousSeason, currentSeason } = await runPricingAlgorithm(client, req.body);
+    const { prices, previousSeason, currentSeason, rookiesPricedByRank } = await runPricingAlgorithm(client, req.body);
 
     // UPSERT into player_current_prices
     let updated = 0;
@@ -326,6 +375,7 @@ router.post('/set-initial-prices', requireAdmin, async (req, res) => {
       success: true,
       message: `Set initial prices for ${updated} players based on ${previousSeason} season totals`,
       playersUpdated: updated,
+      rookiesPricedByRank,
       previousSeason,
       currentSeason
     });
