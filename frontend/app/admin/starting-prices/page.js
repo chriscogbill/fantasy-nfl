@@ -102,7 +102,7 @@ export default function StartingPricesPage() {
       case 'player_position': return player.player_position || '';
       case 'player_team': return player.player_team || '';
       case 'current_price': return parseFloat(player.current_price) || 0;
-      case 'avg_points': return parseFloat(player.avg_points) || 0;
+      case 'avg_points': return parseFloat(player.prev_season_total) || 0;
       case 'prev_price': return prevSeasonPrices[player.player_id] || 0;
       case 'suggested': return suggestedPrices[player.player_id] || 0;
       case 'search_rank': return player.search_rank || 9999999;
@@ -505,7 +505,7 @@ export default function StartingPricesPage() {
                   {currentSeason - 1} Price<SortIcon columnKey="prev_price" />
                 </th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 cursor-pointer hover:text-primary-600 select-none" onClick={() => handleSort('avg_points')}>
-                  {currentSeason - 1} Avg Pts<SortIcon columnKey="avg_points" />
+                  {currentSeason - 1} Pts<SortIcon columnKey="avg_points" />
                 </th>
                 {hasSuggested && (
                   <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 cursor-pointer hover:text-primary-600 select-none" onClick={() => handleSort('suggested')}>
@@ -556,7 +556,7 @@ export default function StartingPricesPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className="text-gray-600">
-                        {player.avg_points ? parseFloat(player.avg_points).toFixed(1) : '-'}
+                        {player.prev_season_total ? parseFloat(player.prev_season_total).toFixed(1) : '-'}
                       </span>
                     </td>
                     {hasSuggested && (
