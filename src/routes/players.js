@@ -220,12 +220,21 @@ async function runPricingAlgorithm(dbClient, params = {}) {
     players.sort((a, b) => b.avg_points - a.avg_points);
     const multiplier = positionMultipliers[position] || 1.0;
 
+    // Percentile over SCORED players only. The position group contains
+    // thousands of zero-sample players (practice squads, rookies); with
+    // them in the denominator every scored player's percentile rounded
+    // to ~1.0 and the whole scored pool compressed into the top prices
+    // (observed on the first 2025 preview: nothing priced $5–13, ~850
+    // players at $14–18). calculatePrices.js always ranked among scored
+    // players only — this endpoint now matches it.
+    const scoredCount = players.filter(pl => pl.avg_points > 0).length;
+
     players.forEach((player, index) => {
       let price;
-      if (player.avg_points === 0) {
+      if (player.avg_points === 0 || scoredCount === 0) {
         price = MIN_PRICE;
       } else {
-        const percentile = 1 - (index / players.length);
+        const percentile = 1 - (index / scoredCount);
         const rawPrice = MIN_PRICE + (MAX_PRICE - MIN_PRICE) * percentile * multiplier;
         price = Math.max(MIN_PRICE, Math.round(rawPrice * 10) / 10);
       }
