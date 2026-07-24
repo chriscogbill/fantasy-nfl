@@ -371,11 +371,16 @@ router.post('/setup-season/copy-constraints', requireAdmin, async (req, res) => 
       });
     }
 
+    // Column list matches the ACTUAL roster_constraints table — the
+    // original insert referenced a schema that never existed (budget,
+    // min_qb, …) and 500'd on first-ever use (2025 season setup).
     const result = await pool.query(
-      `INSERT INTO roster_constraints (season, budget, roster_size, min_qb, min_rb, min_wr, min_te, min_k, min_def,
-        start_qb, start_rb, start_wr, start_te, start_flex, start_k, start_def, free_transfers_per_week, points_per_extra_transfer)
-       SELECT $1, budget, roster_size, min_qb, min_rb, min_wr, min_te, min_k, min_def,
-        start_qb, start_rb, start_wr, start_te, start_flex, start_k, start_def, free_transfers_per_week, points_per_extra_transfer
+      `INSERT INTO roster_constraints (season, total_budget, total_roster_spots,
+        qb_spots, rb_spots, wr_spots, te_spots, def_spots, k_spots,
+        starting_qb, starting_rb, starting_wr, starting_te, starting_flex, starting_def, starting_k)
+       SELECT $1, total_budget, total_roster_spots,
+        qb_spots, rb_spots, wr_spots, te_spots, def_spots, k_spots,
+        starting_qb, starting_rb, starting_wr, starting_te, starting_flex, starting_def, starting_k
        FROM roster_constraints WHERE season = $2`,
       [currentSeason, previousSeason]
     );
