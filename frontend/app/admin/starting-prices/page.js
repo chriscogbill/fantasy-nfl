@@ -27,6 +27,7 @@ export default function StartingPricesPage() {
     minPrice: 4.5,
     maxPrice: 15.0,
     minGames: 3,
+    curveExponent: 2.0,
   });
 
   const [filters, setFilters] = useState({
@@ -363,6 +364,17 @@ export default function StartingPricesPage() {
               min="1"
               value={algorithmParams.minGames}
               onChange={(e) => setAlgorithmParams(prev => ({ ...prev, minGames: parseInt(e.target.value) || 1 }))}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide" title="Percentile curve shape: 1 = linear; higher = steeper drop below the elite (more price spread within a position)">Curve Exponent</label>
+            <input
+              type="number"
+              step="0.25"
+              min="0.5"
+              value={algorithmParams.curveExponent}
+              onChange={(e) => setAlgorithmParams(prev => ({ ...prev, curveExponent: parseFloat(e.target.value) || 1 }))}
               className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>

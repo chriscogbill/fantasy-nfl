@@ -16,9 +16,18 @@ export default function PlayersPage() {
     minPrice: '',
     maxPrice: '',
   });
+  // During Setup/Preseason nobody has current-season points yet, so the
+  // points column shows LAST season's totals (the number you pick teams
+  // by) instead of an all-zero "Avg Points" (Chris, 2026-07-24: the
+  // page looked broken in Setup with every row at 0.0).
+  const [currentWeekState, setCurrentWeekState] = useState(null);
+  const isPreseason = currentWeekState === 'Setup' || currentWeekState === 'Preseason';
 
   useEffect(() => {
     fetchPlayers();
+    api.getCurrentWeek()
+      .then((w) => setCurrentWeekState(w ?? null))
+      .catch(() => setCurrentWeekState(null));
   }, [currentSeason]);
 
   async function fetchPlayers() {
@@ -167,7 +176,9 @@ export default function PlayersPage() {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Position</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Team</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600">Price</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600">Avg Points</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600">
+                  {isPreseason ? `${currentSeason - 1} Pts` : 'Avg Points'}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -204,7 +215,9 @@ export default function PlayersPage() {
                   </td>
                   <td className="px-4 py-4 text-right">
                     <span className="font-bold text-primary-600">
-                      {player.avg_points ? parseFloat(player.avg_points).toFixed(1) : '-'}
+                      {isPreseason
+                        ? (player.prev_season_total ? parseFloat(player.prev_season_total).toFixed(1) : '-')
+                        : (player.avg_points ? parseFloat(player.avg_points).toFixed(1) : '-')}
                     </span>
                   </td>
                 </tr>

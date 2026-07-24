@@ -164,6 +164,12 @@ const DEFAULT_ALGORITHM_PARAMS = {
   minPrice: 4.5,
   maxPrice: 15.0,
   minGames: 3,
+  // Percentile is raised to this power before pricing. 1 = the original
+  // linear curve, which compressed each position's whole viable pool
+  // into the top few $ (feasible TEs all $16-18). >1 bends the curve so
+  // price falls away quickly below the elite (Chris, 2026-07-24: Likely
+  // vs Kittle should feel like $6 vs $18, not $16 vs $18).
+  curveExponent: 2.0,
 };
 
 // Shared pricing algorithm logic
@@ -172,6 +178,7 @@ async function runPricingAlgorithm(dbClient, params = {}) {
   const MIN_PRICE = params.minPrice != null ? parseFloat(params.minPrice) : DEFAULT_ALGORITHM_PARAMS.minPrice;
   const MAX_PRICE = params.maxPrice != null ? parseFloat(params.maxPrice) : DEFAULT_ALGORITHM_PARAMS.maxPrice;
   const MIN_GAMES = params.minGames != null ? parseInt(params.minGames) : DEFAULT_ALGORITHM_PARAMS.minGames;
+  const CURVE_EXP = params.curveExponent != null ? parseFloat(params.curveExponent) : DEFAULT_ALGORITHM_PARAMS.curveExponent;
 
   const currentSeason = await getCurrentSeason(dbClient);
   const previousSeason = currentSeason - 1;
@@ -236,7 +243,7 @@ async function runPricingAlgorithm(dbClient, params = {}) {
       prices[player.player_id] = MIN_PRICE;
     });
     priceable.forEach((player, index) => {
-      const percentile = 1 - (index / priceable.length);
+      const percentile = Math.pow(1 - (index / priceable.length), CURVE_EXP);
       const rawPrice = MIN_PRICE + (MAX_PRICE - MIN_PRICE) * percentile * multiplier;
       prices[player.player_id] = Math.max(MIN_PRICE, Math.round(rawPrice * 10) / 10);
     });
@@ -250,7 +257,7 @@ async function runPricingAlgorithm(dbClient, params = {}) {
     // veteran → capped at that veteran's price (the admin starting-
     // prices page is the editorial pass for genuine outliers); no
     // meaningful rank (Sleeper sentinel 9999999 / null) → MIN_PRICE.
-    const RANK_SENTINEL = 3000; // beyond this, "ranked" is meaningless
+    const RANK_SENTINEL = 500; // Sleeper packs placeholder tiers at 999+ (seen: Freiermuth "999")
     const ladder = players
       .filter(pl =>
         pl.team &&
@@ -301,6 +308,33 @@ async function runPricingAlgorithm(dbClient, params = {}) {
           prices[player.player_id] = rounded;
           rookiesPricedByRank++;
         }
+      });
+
+      // Unattached veterans (played last season, currently no team —
+      // e.g. a star between contracts): Chris's call 2026-07-24 — price
+      // by RANK via the same ladder rather than prior points (their
+      // situation changed) or a hard floor (they may be elite). Stale-
+      // rank retirees fail the played-last-season test and stay floored.
+      players.forEach(player => {
+        if (player.team || player.avg_points === 0) return;
+        const rank = player.search_rank;
+        if (!Number.isFinite(rank) || rank <= 0 || rank >= RANK_SENTINEL) return;
+        const byDistance = ladder
+          .map(step => ({ ...step, dist: Math.abs(step.rank - rank) }))
+          .sort((a, b) => a.dist - b.dist)
+          .slice(0, 4)
+          .map(step => step.price)
+          .sort((a, b) => a - b);
+        if (byDistance.length === 0) return;
+        const mid = byDistance.length / 2;
+        let price = byDistance.length % 2
+          ? byDistance[Math.floor(mid)]
+          : (byDistance[mid - 1] + byDistance[mid]) / 2;
+        const topPrices = [...ladder].map(l => l.price).sort((a, b) => b - a);
+        const cap = topPrices[Math.min(2, topPrices.length - 1)];
+        price = Math.min(price, cap);
+        const roundedVet = Math.max(MIN_PRICE, Math.round(price * 10) / 10);
+        if (roundedVet > MIN_PRICE) prices[player.player_id] = roundedVet;
       });
     }
   });
