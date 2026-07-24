@@ -352,50 +352,6 @@ router.post('/roll-back-season', requireAdmin, async (req, res) => {
   }
 });
 
-// POST /api/settings/setup-season/copy-constraints - Copy roster constraints from previous season
-router.post('/setup-season/copy-constraints', requireAdmin, async (req, res) => {
-  try {
-    const currentSeason = await getCurrentSeason(pool);
-    const previousSeason = currentSeason - 1;
-
-    // Check if constraints already exist for current season
-    const existingResult = await pool.query(
-      `SELECT COUNT(*) FROM roster_constraints WHERE season = $1`, [currentSeason]
-    );
-
-    if (parseInt(existingResult.rows[0].count) > 0) {
-      return res.json({
-        success: true,
-        message: `Roster constraints already exist for season ${currentSeason}`,
-        copied: 0
-      });
-    }
-
-    // Column list matches the ACTUAL roster_constraints table — the
-    // original insert referenced a schema that never existed (budget,
-    // min_qb, …) and 500'd on first-ever use (2025 season setup).
-    const result = await pool.query(
-      `INSERT INTO roster_constraints (season, total_budget, total_roster_spots,
-        qb_spots, rb_spots, wr_spots, te_spots, def_spots, k_spots,
-        starting_qb, starting_rb, starting_wr, starting_te, starting_flex, starting_def, starting_k)
-       SELECT $1, total_budget, total_roster_spots,
-        qb_spots, rb_spots, wr_spots, te_spots, def_spots, k_spots,
-        starting_qb, starting_rb, starting_wr, starting_te, starting_flex, starting_def, starting_k
-       FROM roster_constraints WHERE season = $2`,
-      [currentSeason, previousSeason]
-    );
-
-    res.json({
-      success: true,
-      message: `Copied ${result.rowCount} constraint(s) from season ${previousSeason} to ${currentSeason}`,
-      copied: result.rowCount
-    });
-  } catch (error) {
-    console.error('Error copying constraints:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // GET /api/settings/current/week - Convenience endpoint for current week
 router.get('/current/week', async (req, res) => {
   try {

@@ -104,7 +104,7 @@ cd frontend && npm run dev  # Dev server on 3001
 ## Database
 
 - **Database name**: fantasyNFL
-- **Key tables**: players, player_stats, player_current_prices, player_price_history, player_scores (view), teams, rosters, transfers, leagues, league_entries, league_standings, nfl_fixtures, scoring, scoring_sections, roster_constraints, users, app_settings, lineup_deadlines
+- **Key tables**: players, player_stats, player_current_prices, player_price_history, player_scores (view), teams, rosters, transfers, leagues, league_entries, league_standings, nfl_fixtures, scoring, scoring_sections, users, app_settings, lineup_deadlines (game rules — $100M budget, 15 spots, position minimums — are hardcoded in the PL/pgSQL functions + frontend; the old roster_constraints table was dead and dropped July 2026)
 - **Key view**: `player_scores` - Computed view that cross-joins `player_stats` with `scoring` rules to calculate fantasy points per format (PPR, standard, etc.). This is the core scoring engine.
 - **Key functions**: calculate_transfer_impact(), get_available_players(), get_lineup_with_points(), get_league_standings(), get_league_history(), set_starting_lineup(), validate_roster(), copy_all_rosters_to_next_week()
 - **Indexes**: 12 indexes on common query patterns (rosters by team/week, standings, fixtures, price history)

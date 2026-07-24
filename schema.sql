@@ -1253,51 +1253,6 @@ ALTER SEQUENCE public.players_player_id_seq OWNED BY public.players.player_id;
 
 
 --
--- Name: roster_constraints; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.roster_constraints (
-    constraint_id integer NOT NULL,
-    season integer NOT NULL,
-    total_budget numeric(10,1) DEFAULT 100.0 NOT NULL,
-    total_roster_spots integer DEFAULT 15 NOT NULL,
-    qb_spots integer DEFAULT 2 NOT NULL,
-    rb_spots integer DEFAULT 4 NOT NULL,
-    wr_spots integer DEFAULT 4 NOT NULL,
-    te_spots integer DEFAULT 2 NOT NULL,
-    def_spots integer DEFAULT 2 NOT NULL,
-    k_spots integer DEFAULT 1 NOT NULL,
-    starting_qb integer DEFAULT 1 NOT NULL,
-    starting_rb integer DEFAULT 2 NOT NULL,
-    starting_wr integer DEFAULT 2 NOT NULL,
-    starting_te integer DEFAULT 1 NOT NULL,
-    starting_flex integer DEFAULT 1 NOT NULL,
-    starting_def integer DEFAULT 1 NOT NULL,
-    starting_k integer DEFAULT 1 NOT NULL
-);
-
-
---
--- Name: roster_constraints_constraint_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.roster_constraints_constraint_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: roster_constraints_constraint_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.roster_constraints_constraint_id_seq OWNED BY public.roster_constraints.constraint_id;
-
-
---
 -- Name: rosters; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1592,13 +1547,6 @@ ALTER TABLE ONLY public.players ALTER COLUMN player_id SET DEFAULT nextval('publ
 
 
 --
--- Name: roster_constraints constraint_id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.roster_constraints ALTER COLUMN constraint_id SET DEFAULT nextval('public.roster_constraints_constraint_id_seq'::regclass);
-
-
---
 -- Name: rosters roster_id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1742,22 +1690,6 @@ ALTER TABLE ONLY public.players
 
 ALTER TABLE ONLY public.players
     ADD CONSTRAINT players_sleeper_id_key UNIQUE (sleeper_id);
-
-
---
--- Name: roster_constraints roster_constraints_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.roster_constraints
-    ADD CONSTRAINT roster_constraints_pkey PRIMARY KEY (constraint_id);
-
-
---
--- Name: roster_constraints roster_constraints_season_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.roster_constraints
-    ADD CONSTRAINT roster_constraints_season_key UNIQUE (season);
 
 
 --

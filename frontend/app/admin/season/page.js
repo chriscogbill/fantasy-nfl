@@ -18,7 +18,6 @@ export default function SeasonSetupPage() {
   const [processing, setProcessing] = useState(null);
 
   // Status checks
-  const [hasConstraints, setHasConstraints] = useState(false);
   const [hasPrices, setHasPrices] = useState(false);
   const [hasDeadlines, setHasDeadlines] = useState(false);
   const [hasScoringRules, setHasScoringRules] = useState(false);
@@ -54,15 +53,6 @@ export default function SeasonSetupPage() {
         setHasScoringRules(false);
       }
 
-      // Check for constraints
-      try {
-        // We don't have a direct constraints endpoint, so we'll use a proxy check
-        // If teams can be created, constraints exist
-        setHasConstraints(true); // Default to true; will be false if copy-constraints is needed
-      } catch (e) {
-        setHasConstraints(false);
-      }
-
       // Check for prices
       try {
         const playersData = await api.getPlayers({ limit: 1 });
@@ -84,21 +74,6 @@ export default function SeasonSetupPage() {
       setError('Failed to load setup status');
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleCopyConstraints() {
-    setProcessing('constraints');
-    setError('');
-    try {
-      const result = await api.copyConstraints();
-      setSuccess(result.message);
-      setHasConstraints(true);
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError(err.message || 'Failed to copy constraints');
-    } finally {
-      setProcessing(null);
     }
   }
 
@@ -153,14 +128,6 @@ export default function SeasonSetupPage() {
       action: null,
       link: '/admin/scoring',
       linkText: 'Edit Scoring Rules'
-    },
-    {
-      id: 'constraints',
-      title: 'Copy Roster Constraints',
-      description: 'Copy budget, roster size, and position requirements from the previous season.',
-      done: hasConstraints,
-      action: handleCopyConstraints,
-      actionText: 'Copy Constraints'
     },
     {
       id: 'deadlines',

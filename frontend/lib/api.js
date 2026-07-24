@@ -277,12 +277,6 @@ class ApiClient {
     });
   }
 
-  async copyConstraints() {
-    return this.request('/api/settings/setup-season/copy-constraints', {
-      method: 'POST',
-    });
-  }
-
   // Scoring Rules
   async getScoringRules() {
     return this.request('/api/scoring');
