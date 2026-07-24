@@ -201,9 +201,14 @@ async function importPlayers() {
   const players = await provider.getAllPlayers();
   console.log(`Found ${players.length} players from Sleeper API`);
   
+  // Only the positions the game can roster — Sleeper's dump includes
+  // every position (LB, CB, OL, P…), which bloated the pool to ~11.8k
+  // rows, 65% of them unusable (cleaned from prod 2026-07-24).
+  const VALID_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF']);
+
   let imported = 0;
   for (const player of players) {
-    if (player.position && player.name) {
+    if (player.position && player.name && VALID_POSITIONS.has(player.position)) {
       // Insert with sleeper_id
       try {
         await pool.query(
