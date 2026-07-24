@@ -274,18 +274,29 @@ async function runPricingAlgorithm(dbClient, params = {}) {
         const rank = player.search_rank;
         if (!Number.isFinite(rank) || rank <= 0 || rank >= RANK_SENTINEL) return;
 
-        let price;
-        if (rank <= ladder[0].rank) {
-          price = ladder[0].price;
-        } else if (rank >= ladder[ladder.length - 1].rank) {
+        if (rank >= ladder[ladder.length - 1].rank) {
           return; // ranked below every scored veteran — MIN_PRICE stands
-        } else {
-          let hi = ladder.findIndex(step => step.rank >= rank);
-          const upper = ladder[hi];
-          const lower = ladder[hi - 1];
-          const t = (rank - lower.rank) / (upper.rank - lower.rank);
-          price = lower.price + (upper.price - lower.price) * t;
         }
+        // Median of the 4 nearest scored neighbours by rank. Two-point
+        // linear interpolation proved fragile in practice: Sleeper packs
+        // rookies into placeholder rank tiers (ties at e.g. 212) and the
+        // price ladder isn't monotonic in rank, which priced mid-hype
+        // rookie TEs at Kelce money. A neighbourhood median smooths both.
+        const byDistance = ladder
+          .map(step => ({ ...step, dist: Math.abs(step.rank - rank) }))
+          .sort((a, b) => a.dist - b.dist)
+          .slice(0, 4)
+          .map(step => step.price)
+          .sort((a, b) => a - b);
+        const mid = byDistance.length / 2;
+        let price = byDistance.length % 2
+          ? byDistance[Math.floor(mid)]
+          : (byDistance[mid - 1] + byDistance[mid]) / 2;
+        // Cap: a rookie never out-prices the position's 3rd-best proven
+        // veteran — hyped rookies slot just below the established elite.
+        const topPrices = [...ladder].map(l => l.price).sort((a, b) => b - a);
+        const cap = topPrices[Math.min(2, topPrices.length - 1)];
+        price = Math.min(price, cap);
         const rounded = Math.max(MIN_PRICE, Math.round(price * 10) / 10);
         if (rounded > MIN_PRICE) {
           prices[player.player_id] = rounded;
