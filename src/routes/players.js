@@ -192,7 +192,7 @@ async function runPricingAlgorithm(dbClient, params = {}) {
 
   // Get all active players (search_rank drives the rookie pricing pass)
   const playersResult = await dbClient.query(
-    `SELECT player_id, position, search_rank FROM players WHERE status != 'Inactive'`
+    `SELECT player_id, position, team, search_rank FROM players WHERE status != 'Inactive'`
   );
 
   // Calculate prices by position percentile
@@ -207,6 +207,7 @@ async function runPricingAlgorithm(dbClient, params = {}) {
     positionGroups[player.position].push({
       player_id: player.player_id,
       position: player.position,
+      team: player.team,
       search_rank: player.search_rank,
       avg_points: avgPts,
       games_played: stats?.games_played || 0
@@ -265,6 +266,11 @@ async function runPricingAlgorithm(dbClient, params = {}) {
     if (ladder.length >= 2) {
       players.forEach(player => {
         if (player.avg_points !== 0) return;
+        // No current NFL team = retired / unsigned, not a rookie — a
+        // drafted rookie always has a team. Guards against zero-history
+        // veterans with stale-but-plausible search_ranks being priced
+        // like hyped rookies (Blake Jarwin, retired, previewed $17.7M).
+        if (!player.team) return;
         const rank = player.search_rank;
         if (!Number.isFinite(rank) || rank <= 0 || rank >= RANK_SENTINEL) return;
 
