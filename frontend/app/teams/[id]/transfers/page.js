@@ -130,7 +130,7 @@ export default function TransfersPage() {
     try {
       const [teamData, playersData] = await Promise.all([
         api.getTeam(teamId),
-        api.getPlayers({ season: currentSeason, available: true, limit: 1000 }),
+        api.getPlayers({ season: currentSeason, available: true, limit: 10000 }),
       ]);
 
       setTeam(teamData.team);

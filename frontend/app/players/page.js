@@ -33,7 +33,7 @@ export default function PlayersPage() {
   async function fetchPlayers() {
     setLoading(true);
     try {
-      const data = await api.getPlayers({ limit: 1000, season: currentSeason });
+      const data = await api.getPlayers({ limit: 10000, season: currentSeason });
       setAllPlayers(data.players || []);
     } catch (error) {
       console.error('Error fetching players:', error);
