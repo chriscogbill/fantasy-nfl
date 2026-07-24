@@ -61,7 +61,7 @@ router.get('/previous-season-prices', requireAdmin, async (req, res) => {
     let result = await pool.query(
       `SELECT player_id, final_price as price
        FROM player_prices_archive
-       WHERE season = $1 AND record_type = 'current_price'`,
+       WHERE season = $1 AND record_type = 'final_price'`,
       [previousSeason]
     );
 
@@ -107,7 +107,7 @@ router.post('/copy-prior-year-prices', requireAdmin, async (req, res) => {
     let prevResult = await client.query(
       `SELECT player_id, final_price as price
        FROM player_prices_archive
-       WHERE season = $1 AND record_type = 'current_price'`,
+       WHERE season = $1 AND record_type = 'final_price'`,
       [previousSeason]
     );
 
@@ -338,6 +338,21 @@ async function runPricingAlgorithm(dbClient, params = {}) {
       });
     }
   });
+
+  // Global rescale (Chris, 2026-07-24): maxPrice is the price of THE
+  // most expensive player in the game, full stop. Position multipliers
+  // + the curve set everyone's RELATIVE price; here the whole market is
+  // scaled linearly (floor fixed) so the global top lands exactly on
+  // maxPrice. Before this, multipliers pushed above maxPrice (TE ceiling
+  // was 4.5 + 10.5*1.3 = 18.15 with max "15"), which read as a bug.
+  const globalMax = Math.max(...Object.values(prices));
+  if (globalMax > MIN_PRICE) {
+    const scale = (MAX_PRICE - MIN_PRICE) / (globalMax - MIN_PRICE);
+    for (const id of Object.keys(prices)) {
+      const scaled = MIN_PRICE + (prices[id] - MIN_PRICE) * scale;
+      prices[id] = Math.max(MIN_PRICE, Math.round(scaled * 10) / 10);
+    }
+  }
 
   return { prices, previousSeason, currentSeason, rookiesPricedByRank };
 }
