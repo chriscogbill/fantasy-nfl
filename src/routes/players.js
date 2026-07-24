@@ -369,11 +369,11 @@ router.post('/set-initial-prices', requireAdmin, async (req, res) => {
     let updated = 0;
     for (const [playerId, price] of Object.entries(prices)) {
       await client.query(
-        `INSERT INTO player_current_prices (player_id, current_price, algorithm_price, last_updated)
-         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+        `INSERT INTO player_current_prices (player_id, current_price, algorithm_price, season, last_updated)
+         VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
          ON CONFLICT (player_id) DO UPDATE SET
-           current_price = $2, algorithm_price = $3, last_updated = CURRENT_TIMESTAMP`,
-        [playerId, price, price]
+           current_price = $2, algorithm_price = $3, season = $4, last_updated = CURRENT_TIMESTAMP`,
+        [playerId, price, price, currentSeason]
       );
       updated++;
     }
