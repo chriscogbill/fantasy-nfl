@@ -173,12 +173,23 @@ BEGIN
             WHEN v_is_preseason THEN 0.0
             ELSE ROUND(SUM(ps.total_points), 2)
         END as season_total,
-        -- Previous season total points (for preseason display)
-        (SELECT ROUND(SUM(prev_ps.total_points), 2)
-         FROM player_scores prev_ps
-         WHERE prev_ps.player_id = p.player_id
-           AND prev_ps.season = p_season - 1
-           AND prev_ps.league_format = 'ppr'
+        -- Previous season total points (for preseason display).
+        -- Totals TABLE first: roll-forward-season archives the previous
+        -- season out of player_stats (emptying the live scores view for
+        -- that season) and computes player_season_totals precisely so
+        -- this survives the roll. Live-view fallback covers seasons that
+        -- were never rolled through (e.g. simulated mid-season testing).
+        COALESCE(
+          (SELECT pst_prev.total_points
+           FROM player_season_totals pst_prev
+           WHERE pst_prev.player_id = p.player_id
+             AND pst_prev.season = p_season - 1
+             AND pst_prev.league_format = 'ppr'),
+          (SELECT ROUND(SUM(prev_ps.total_points), 2)
+           FROM player_scores prev_ps
+           WHERE prev_ps.player_id = p.player_id
+             AND prev_ps.season = p_season - 1
+             AND prev_ps.league_format = 'ppr')
         ) as prev_season_total,
         -- Next 3 fixtures (add @ if away)
         (SELECT CASE
