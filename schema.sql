@@ -1052,6 +1052,36 @@ CREATE TABLE public.scoring (
 -- Name: player_scores; Type: VIEW; Schema: public; Owner: -
 --
 
+--
+-- Archive-inclusive twins (added 2026-07-24, 2025-season testing):
+-- roll-forward-season moves finished seasons from player_stats into
+-- player_stats_archive, which emptied every historical read (the player
+-- stats modal showed zeros for 2024). These views union live + archive
+-- (live wins on collision). player_scores_all is GENERATED on prod from
+-- pg_get_viewdef('player_scores') with player_stats -> player_stats_all,
+-- so it can never drift from the scoring logic — regenerate it the same
+-- way after any change to player_scores (see fantasy-nfl PR #11).
+--
+
+CREATE VIEW public.player_stats_all AS
+ SELECT stat_id, player_id, week, season, opponent, passing_yards, passing_tds, interceptions,
+        completions, attempts, rushing_yards, rushing_tds, rushing_attempts, receptions,
+        receiving_yards, receiving_tds, targets, fumbles_lost, two_point_conversions,
+        game_date, created_at, fg_0_19, fg_20_29, fg_30_39, fg_40_49, fg_50p,
+        xp_made, xp_missed, fga, def_td, points_allowed, team
+ FROM public.player_stats
+ UNION ALL
+ SELECT a.stat_id, a.player_id, a.week, a.season, a.opponent, a.passing_yards, a.passing_tds, a.interceptions,
+        a.completions, a.attempts, a.rushing_yards, a.rushing_tds, a.rushing_attempts, a.receptions,
+        a.receiving_yards, a.receiving_tds, a.targets, a.fumbles_lost, a.two_point_conversions,
+        a.game_date, a.created_at, a.fg_0_19, a.fg_20_29, a.fg_30_39, a.fg_40_49, a.fg_50p,
+        a.xp_made, a.xp_missed, a.fga, a.def_td, a.points_allowed, a.team
+ FROM public.player_stats_archive a
+ WHERE NOT EXISTS (SELECT 1 FROM public.player_stats s
+   WHERE s.player_id = a.player_id AND s.week = a.week AND s.season = a.season);
+
+-- player_scores_all: generated on prod (see comment above).
+
 CREATE VIEW public.player_scores AS
  WITH scoring_pivot AS (
          SELECT scoring.league_format,

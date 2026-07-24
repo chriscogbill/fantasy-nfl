@@ -221,26 +221,24 @@ async function runPricingAlgorithm(dbClient, params = {}) {
     players.sort((a, b) => b.avg_points - a.avg_points);
     const multiplier = positionMultipliers[position] || 1.0;
 
-    // Percentile over SCORED players only. The position group contains
-    // thousands of zero-sample players (practice squads, rookies); with
-    // them in the denominator every scored player's percentile rounded
-    // to ~1.0 and the whole scored pool compressed into the top prices
-    // (observed on the first 2025 preview: nothing priced $5–13, ~850
-    // players at $14–18). calculatePrices.js always ranked among scored
-    // players only — this endpoint now matches it.
-    const scoredCount = players.filter(pl => pl.avg_points > 0).length;
+    // Percentile over PRICEABLE players only: scored AND on a current
+    // NFL team. Zero-sample players (practice squads, rookies) in the
+    // denominator compressed the whole pool into the top prices on the
+    // first 2025 preview (nothing at $5–13); team-less players both
+    // distorted the curve and got priced themselves — no team means no
+    // fixtures and no points, whatever last season said (Jonnu Smith,
+    // FA, priced 4th in the whole game off his 2024). Everyone not
+    // priceable gets the floor; an unattached star who signs mid-season
+    // is caught up by the weekly repricing.
+    const priceable = players.filter(pl => pl.avg_points > 0 && pl.team);
 
-    players.forEach((player, index) => {
-      let price;
-      if (player.avg_points === 0 || scoredCount === 0) {
-        price = MIN_PRICE;
-      } else {
-        const percentile = 1 - (index / scoredCount);
-        const rawPrice = MIN_PRICE + (MAX_PRICE - MIN_PRICE) * percentile * multiplier;
-        price = Math.max(MIN_PRICE, Math.round(rawPrice * 10) / 10);
-      }
-
-      prices[player.player_id] = price;
+    players.forEach(player => {
+      prices[player.player_id] = MIN_PRICE;
+    });
+    priceable.forEach((player, index) => {
+      const percentile = 1 - (index / priceable.length);
+      const rawPrice = MIN_PRICE + (MAX_PRICE - MIN_PRICE) * percentile * multiplier;
+      prices[player.player_id] = Math.max(MIN_PRICE, Math.round(rawPrice * 10) / 10);
     });
 
     // Rookie/no-history pass: players with no prior-season sample would
@@ -255,6 +253,7 @@ async function runPricingAlgorithm(dbClient, params = {}) {
     const RANK_SENTINEL = 3000; // beyond this, "ranked" is meaningless
     const ladder = players
       .filter(pl =>
+        pl.team &&
         pl.avg_points > 0 &&
         Number.isFinite(pl.search_rank) &&
         pl.search_rank > 0 &&
@@ -496,7 +495,21 @@ router.get('/:id/stats', async (req, res) => {
       `SELECT setting_value FROM app_settings WHERE setting_key = 'current_week'`
     );
     const currentWeekSetting = weekResult.rows[0]?.setting_value || 'Preseason';
-    const currentWeek = currentWeekSetting === 'Preseason' ? 0 : parseInt(currentWeekSetting);
+    // 'Setup' predates nothing-played too; parseInt('Setup') is NaN and
+    // used to 500 the whole endpoint during Setup (found in 2025 testing).
+    const nonPlayingWeeks = ['Preseason', 'Setup'];
+    let currentWeek = nonPlayingWeeks.includes(currentWeekSetting)
+      ? 0
+      : parseInt(currentWeekSetting) || 0;
+
+    // Past (rolled) seasons live in the archive tables; the *_all views
+    // union live + archive. For a completed season every week is "past".
+    const requestedSeason = season;
+    const activeSeason = await getCurrentSeason(pool);
+    const isPastSeason = requestedSeason < activeSeason;
+    if (isPastSeason) currentWeek = 18;
+    const scoresSource = isPastSeason ? 'player_scores_all' : 'player_scores';
+    const statsSource = isPastSeason ? 'player_stats_all' : 'player_stats';
 
     // Get player's current team for future fixture lookups
     const playerResult = await pool.query(
@@ -543,9 +556,9 @@ router.get('/:id/stats', async (req, res) => {
         pst.def_td,
         pst.points_allowed,
         false as is_future
-       FROM player_scores ps
+       FROM ${scoresSource} ps
        JOIN players p ON ps.player_id = p.player_id
-       JOIN player_stats pst ON ps.player_id = pst.player_id
+       JOIN ${statsSource} pst ON ps.player_id = pst.player_id
          AND ps.week = pst.week
          AND ps.season = pst.season
        LEFT JOIN nfl_fixtures f ON f.season = ps.season
