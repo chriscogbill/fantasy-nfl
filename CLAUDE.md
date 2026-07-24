@@ -11,8 +11,8 @@ A full-stack Fantasy NFL salary cap management game where users build NFL fantas
 | Frontend | Next.js 16 + React 19 (Port 3001) |
 | Database | PostgreSQL with PL/pgSQL functions |
 | Styling | Tailwind CSS 4 |
-| Data Source | Sleeper API (NFL stats) |
-| Auth | Express Session + bcrypt |
+| Data Source | Sleeper API (NFL stats), ESPN API (fixtures) |
+| Auth | cogs-auth shared session (`.cogs.tech` cookie, sessions in shared cogsAuth DB). `src/routes/auth.js` is LEGACY and not mounted in server.js |
 
 ## Project Structure
 
@@ -141,8 +141,8 @@ cd frontend && npm run dev  # Dev server on 3001
 - [ ] Add manager history (track previous team owners)
 
 ### Deployment
-- [ ] Make the app accessible online (deploy to hosting platform)
-- [ ] Security audit (check for vulnerabilities, secure API endpoints, input validation, etc.)
+- [x] Make the app accessible online - DONE: Railway project `fantasy-nfl` (services `fantasy-nfl` API + `fantasy-nfl-frontend`), live at fantasynfl.cogs.tech / api-fantasynfl.cogs.tech
+- [x] Security audit - DONE (July 2026 estate audit): PII stripped for anonymous reads (stripPiiForAnon), team/league creation requires auth + session email, SESSION_SECRET hardened. Ownership middleware covered separately above
 
 ### Build Your Roster Screen
 - [x] Remove 'Back to Team' page link (not needed for initial team selection) - DONE: Hidden when roster is empty
@@ -168,21 +168,25 @@ cd frontend && npm run dev  # Dev server on 3001
 - [ ] Create player_team_history table to track which team a player was on each week (independent of stats). Currently, weeks without stats fall back to the player's current team, which may be incorrect if the player changed teams mid-season. This would allow accurate opponent display even for weeks where a player didn't record stats.
 
 ### Security (from codebase analysis)
-- [ ] Add authorization middleware to verify the logged-in user owns the team they're modifying (currently any user can execute transfers, modify lineups, etc. for any team)
+- [x] Add authorization middleware to verify the logged-in user owns the team they're modifying - DONE: `requireTeamOwnership` middleware (src/middleware/requireAuth.js) checks `teams.user_email` vs the session email with an admin bypass; applied to transfers preview/execute, league join/join-by-code/leave, lineup PUT + auto-pick. The only unguarded POST is /transfers/validate-roster (pure computation, no mutation)
 - [x] Move hardcoded session secret to environment variable - DONE: server.js now reads `SESSION_SECRET` from env with fallback
 - [x] Move DB credentials to environment variables - DONE: connection.js now reads `DB_USER`, `DB_HOST`, `DB_NAME`, `DB_PASSWORD`, `DB_PORT` from env with fallbacks. Added `.env.example` for reference
-- [ ] Add rate limiting on login endpoint and other sensitive routes to prevent brute-force attacks
+- [x] Add rate limiting on login endpoint - N/A HERE: login is handled by cogs-auth, which has Postgres-backed rate limiting on login + email endpoints (cogs-auth PR #5, July 2026). The legacy local login route isn't mounted
 - [ ] Stop exposing internal error messages to clients (`error.message` is returned directly in API responses)
 - [x] Add a persistent session store (currently uses in-memory store which won't scale and loses sessions on restart) - DONE: Using connect-pg-simple with PostgreSQL session table in cogsAuth database
 
 ### Multi-Site / Subdomain Architecture
-- [ ] Configure session cookies at parent domain level (e.g., `.cogs.tech`) to share authentication across subdomains
+- [x] Configure session cookies at parent domain level (`.cogs.tech`) - DONE: shared cogs-auth session across all cogs.tech apps
 - [x] Set up shared persistent session store (Redis or PostgreSQL) accessible by all apps - DONE: PostgreSQL session store in cogsAuth database shared across apps
 - [x] Consider extracting auth into a shared service or shared database for users table - DONE: Created cogs-auth service on port 3002 with dedicated cogsAuth database
-- [ ] Potential subdomains: fantasynfl.cogs.tech, plpicker.cogs.tech, chris.cogs.tech
+- [x] Subdomains live: fantasynfl.cogs.tech, plpicker.cogs.tech, chris.cogs.tech (and the rest of the estate)
+
+## 2026 Season Launch (in progress, July 2026)
+
+Launch prep is tracked on the now-next-later board ("📱 Build fantasy NFL app" task). Agreed timing spec (2026-07-22): FPL-style fixed weekly lock at `deadline_datetime − 90min` compared against real timestamps in live play; the week boundary IS the lock (advance + roster copy N→N+1 at lock_at); transfers after lock apply to the following week; `current_day` is demoted to a simulation/testing clock behind a planned `clock_mode` setting (simulated|live). Weekly rhythm (ET): Thu lock/advance → game-window stats imports → Tue 06:00 final stats sweep → Wed 01:00 weekly reprice. In-season automation will be a Railway cron. Prod DB function drift was fixed 2026-07-22 (4 functions re-synced from schema.sql — when changing DB functions, always apply to prod, schema.sql is not self-deploying).
 
 ### Code Quality (from codebase analysis)
-- [ ] Remove hardcoded `season = 2024` across the codebase (~20 places in frontend and some backend routes) - should use the `current_season` setting instead
+- [x] Remove hardcoded `season = 2024` across the codebase - DONE: frontend is fully clean (uses AuthContext currentSeason); getCurrentSeason's break-glass fallback is now dynamic (current year). Remaining 2024 literals are inert: seed-data.js (test scaffolding) and schema.sql function DEFAULT params (cosmetic — every caller passes season explicitly)
 - [ ] Decompose transfers/page.js (1,117 lines) into smaller components (e.g., separate auto-pick, player list, roster display)
 - [x] Consolidate duplicate DB pool configurations - DONE: calculatePrices.js, importStats.js, generateSampleData.js, createUsers.js now all import from src/db/connection.js instead of creating their own pools
 - [ ] Leverage Next.js SSR/SSG where appropriate (currently all pages use `'use client'` with no server-side rendering)
