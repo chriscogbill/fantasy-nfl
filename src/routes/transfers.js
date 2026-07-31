@@ -87,8 +87,8 @@ router.post('/execute', requireTeamOwnership({ from: 'body' }), async (req, res)
       // Copy roster from previous week
       const prevWeek = week - 1;
       await client.query(
-        `INSERT INTO rosters (team_id, player_id, week, season, position_slot)
-         SELECT team_id, player_id, $1, season, position_slot
+        `INSERT INTO rosters (team_id, player_id, week, season, position_slot, bench_order)
+         SELECT team_id, player_id, $1, season, position_slot, bench_order
          FROM rosters
          WHERE team_id = $2 AND week = $3 AND season = $4`,
         [week, teamId, prevWeek, season]

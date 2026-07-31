@@ -107,7 +107,7 @@ async function applyAutoSubs(pool, week, season, dryRun) {
      LEFT JOIN player_scores sc ON sc.player_id = r.player_id
        AND sc.week = $2 AND sc.season = $1 AND sc.league_format = 'ppr'
      WHERE r.season = $1 AND r.week = $2
-     ORDER BY r.team_id, r.roster_id`,
+     ORDER BY r.team_id, r.bench_order NULLS LAST, r.roster_id`,
     [season, week]
   );
 
@@ -123,7 +123,8 @@ async function applyAutoSubs(pool, week, season, dryRun) {
 
   for (const [teamId, rows] of byTeam) {
     const starters = rows.filter(r => r.position_slot !== 'BENCH');
-    // Bench order: insertion order until a bench-order UI exists
+    // Bench priority: user-set bench_order (query sorts NULLS LAST, then
+    // insertion order for rows the user never ordered)
     const bench = rows.filter(r => r.position_slot === 'BENCH');
     if (starters.length !== 9) continue; // malformed lineup — leave alone
 
