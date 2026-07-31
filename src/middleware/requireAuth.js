@@ -74,4 +74,12 @@ function requireTeamOwnership({ from = 'params' } = {}) {
   };
 }
 
-module.exports = { requireAuth, requireAdmin, requireTeamOwnership };
+// Machine access for the weekly cron: a matching x-cron-secret header is as
+// good as an admin session. Humans still need admin.
+function requireAdminOrCron(req, res, next) {
+  const secret = process.env.CRON_SECRET;
+  if (secret && req.get('x-cron-secret') === secret) return next();
+  return requireAdmin(req, res, next);
+}
+
+module.exports = { requireAuth, requireAdmin, requireTeamOwnership, requireAdminOrCron };

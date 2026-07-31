@@ -366,37 +366,43 @@ function argValue(flag) {
   return i !== -1 ? process.argv[i + 1] : null;
 }
 
-const season = argValue('--season') ? parseInt(argValue('--season')) : null;
-const from = argValue('--from');
-const to = argValue('--to');
-const singleWeek = argValue('--week');
+// Only run the CLI when executed directly — the API requires this module
+// (cron tick imports stats in-process) and must not trigger a run or exit.
+if (require.main === module) {
+  const season = argValue('--season') ? parseInt(argValue('--season')) : null;
+  const from = argValue('--from');
+  const to = argValue('--to');
+  const singleWeek = argValue('--week');
 
-let run;
-if (process.argv.includes('--players')) {
-  run = (async () => {
-    const connected = await setup();
-    if (!connected) return;
-    await importPlayers();
-    await pool.end();
-  })();
-} else if (singleWeek) {
-  run = importAll(parseInt(singleWeek), season, true);
-} else if (from && to) {
-  run = importWeekRange(parseInt(from), parseInt(to), season);
-} else {
-  console.error('Usage: node importStats.js --from N --to M [--season YYYY] | --week N [--season YYYY] | --players');
-  process.exit(1);
+  let run;
+  if (process.argv.includes('--players')) {
+    run = (async () => {
+      const connected = await setup();
+      if (!connected) return;
+      await importPlayers();
+      await pool.end();
+    })();
+  } else if (singleWeek) {
+    run = importAll(parseInt(singleWeek), season, true);
+  } else if (from && to) {
+    run = importWeekRange(parseInt(from), parseInt(to), season);
+  } else {
+    console.error('Usage: node importStats.js --from N --to M [--season YYYY] | --week N [--season YYYY] | --players');
+    process.exit(1);
+  }
+
+  run
+    .then(() => {
+      console.log('Done!');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('Error:', error);
+      process.exit(1);
+    });
 }
 
-run
-  .then(() => {
-    console.log('Done!');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('Error:', error);
-    process.exit(1);
-  });
+module.exports = { importWeekStats, importPlayers, importAll, importWeekRange };
 //
 // To import a single week:
 // importAll(5, null, true)       // Week 5, skip players

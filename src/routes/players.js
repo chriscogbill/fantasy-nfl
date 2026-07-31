@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
 const { getCurrentSeason } = require('../helpers/settings');
-const { requireAdmin } = require('../middleware/requireAuth');
+const { requireAdmin, requireAdminOrCron } = require('../middleware/requireAuth');
 
 // GET /api/players - Search and filter players
 // Query params: position, minPrice, maxPrice, search, season
@@ -778,13 +778,6 @@ router.get('/top/:position', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
-// Allow the weekly cron to call reprice with a shared secret; humans need admin.
-function requireAdminOrCron(req, res, next) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && req.get('x-cron-secret') === secret) return next();
-  return requireAdmin(req, res, next);
-}
 
 // POST /api/players/reprice - In-season weekly reprice (admin or cron)
 //
