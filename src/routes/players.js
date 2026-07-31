@@ -831,6 +831,11 @@ router.post('/reprice', requireAdminOrCron, async (req, res) => {
     const MAX_PRICE = DEFAULT_ALGORITHM_PARAMS.maxPrice;
     const DEAD_ZONE = 0.06;
     const DECAY = -0.1;
+    // DEF/K have 32-ish player pools and flat price curves, so pool-fraction
+    // bands over-move them (wk1-2 2025 sim: 46% of DEF moves hit ±0.3 and one
+    // spike week powered multi-week climbs — a value farm). Cap their weekly
+    // step so value accrues no faster than any cheap flier elsewhere.
+    const STEP_CAPS = { DEF: 0.1, K: 0.1 };
 
     // Priced players
     const playersResult = await client.query(
@@ -903,6 +908,8 @@ router.post('/reprice', requireAdminOrCron, async (req, res) => {
           * (f.games / (f.games + 2));
         if (d >= 0.20) step = 0.3; else if (d >= 0.10) step = 0.2; else if (d >= DEAD_ZONE) step = 0.1;
         else if (d <= -0.20) step = -0.3; else if (d <= -0.10) step = -0.2; else if (d <= -DEAD_ZONE) step = -0.1;
+        const cap = STEP_CAPS[p.position] || 0.3;
+        step = Math.max(-cap, Math.min(cap, step));
       } else if (!teamsPlaying.has(p.team)) {
         summary.byes++;
       } else {
