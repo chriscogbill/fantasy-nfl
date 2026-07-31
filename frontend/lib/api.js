@@ -92,6 +92,13 @@ class ApiClient {
     });
   }
 
+  async setBenchOrder(id, data) {
+    return this.request(`/api/teams/${id}/bench-order`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   async getTeamTransfers(id, params = {}) {
     const query = new URLSearchParams(params).toString();
     return this.request(`/api/teams/${id}/transfers?${query}`);

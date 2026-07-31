@@ -306,16 +306,30 @@ export default function LineupPage() {
     return isEmpty ? colors.filled : colors.empty;
   }
 
-  // Position order for sorting
-  const positionOrder = { QB: 1, RB: 2, WR: 3, TE: 4, K: 5, DEF: 6 };
+  // Bench renders in bench order (auto-sub priority) — the API returns rows
+  // already sorted by bench_order, so the state array order IS the priority.
+  const sortedBench = bench;
 
-  // Sort bench players by position then price (highest first)
-  const sortedBench = [...bench].sort((a, b) => {
-    const posA = positionOrder[a.player_position] || 99;
-    const posB = positionOrder[b.player_position] || 99;
-    if (posA !== posB) return posA - posB;
-    return parseFloat(b.current_price || 0) - parseFloat(a.current_price || 0);
-  });
+  async function moveBenchPlayer(index, direction) {
+    const target = index + direction;
+    if (target < 0 || target >= bench.length) return;
+    const newBench = [...bench];
+    [newBench[index], newBench[target]] = [newBench[target], newBench[index]];
+    setBench(newBench);
+    try {
+      await api.setBenchOrder(teamId, {
+        week: lineupWeek,
+        season: currentSeason,
+        order: newBench.map((p) => p.player_id),
+      });
+      setSuccess('Saved');
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (error) {
+      console.error('Error saving bench order:', error);
+      setError(error.message || 'Failed to save bench order');
+      setBench(bench); // revert on failure
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -453,18 +467,40 @@ export default function LineupPage() {
 
       {/* Bench */}
       <div className="card">
-        <h2 className="text-2xl font-bold mb-4">Bench</h2>
+        <h2 className="text-2xl font-bold mb-1">Bench</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Bench order sets auto-sub priority — if a starter doesn&apos;t play, the first eligible bench player comes in.
+        </p>
         {bench.length === 0 ? (
           <div className="text-gray-500">No players on bench</div>
         ) : (
           <div className="space-y-2">
-            {sortedBench.map((player) => (
+            {sortedBench.map((player, benchIndex) => (
               <div
                 key={player.player_id}
                 className="p-4 bg-gray-50 border border-gray-200 rounded-lg"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
+                    {!lineupLocked && (
+                      <div className="flex flex-col">
+                        <button
+                          onClick={() => moveBenchPlayer(benchIndex, -1)}
+                          disabled={benchIndex === 0}
+                          className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer leading-none"
+                          title="Move up in sub priority"
+                        >▲</button>
+                        <button
+                          onClick={() => moveBenchPlayer(benchIndex, 1)}
+                          disabled={benchIndex === bench.length - 1}
+                          className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer leading-none"
+                          title="Move down in sub priority"
+                        >▼</button>
+                      </div>
+                    )}
+                    <span className="w-7 h-7 flex items-center justify-center bg-gray-300 text-gray-700 rounded-full text-sm font-bold" title="Auto-sub priority">
+                      {benchIndex + 1}
+                    </span>
                     <span className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm font-semibold">
                       {player.player_position}
                     </span>

@@ -328,7 +328,7 @@ router.put('/:id/lineup', requireTeamOwnership({ from: 'params' }), async (req, 
         const currentDay = parseInt(settings.current_day) || 1;
 
         if (currentDay >= deadlineDay) {
-          client.release();
+          // release happens in finally — releasing here too would double-release
           return res.status(403).json({
             success: false,
             error: 'Lineup locked — deadline has passed for this week'
@@ -377,6 +377,73 @@ router.put('/:id/lineup', requireTeamOwnership({ from: 'params' }), async (req, 
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error updating lineup:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+// PUT /api/teams/:id/bench-order - Set bench priority for auto-subs.
+// Body: { week, season?, order: [player_id, ...] } — first in the array is
+// first to come in. Same deadline lock as lineup changes.
+router.put('/:id/bench-order', requireTeamOwnership({ from: 'params' }), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { week, order } = req.body;
+    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
+
+    if (!week || !Array.isArray(order) || order.length === 0) {
+      return res.status(400).json({ success: false, error: 'week and a non-empty order array are required' });
+    }
+
+    // Same deadline enforcement as lineup changes
+    const settingsResult = await client.query(
+      "SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('current_week', 'current_day', 'current_season')"
+    );
+    const settings = {};
+    settingsResult.rows.forEach(r => { settings[r.setting_key] = r.setting_value; });
+
+    if (settings.current_week && settings.current_week !== 'Preseason' && settings.current_week !== 'Setup') {
+      const deadlineResult = await client.query(
+        'SELECT deadline_day FROM lineup_deadlines WHERE season = $1 AND week = $2',
+        [parseInt(settings.current_season) || season, parseInt(settings.current_week) + 1]
+      );
+      if (deadlineResult.rows.length > 0) {
+        const deadlineDay = deadlineResult.rows[0].deadline_day;
+        const currentDay = parseInt(settings.current_day) || 1;
+        if (currentDay >= deadlineDay) {
+          return res.status(403).json({ success: false, error: 'Bench order locked — deadline has passed for this week' });
+        }
+      }
+    }
+
+    // Only this team's BENCH rows for the week are orderable
+    const benchResult = await client.query(
+      `SELECT player_id FROM rosters
+       WHERE team_id = $1 AND week = $2 AND season = $3 AND position_slot = 'BENCH'`,
+      [id, week, season]
+    );
+    const benchIds = new Set(benchResult.rows.map(r => r.player_id));
+    const invalid = order.filter(pid => !benchIds.has(pid));
+    if (invalid.length > 0) {
+      return res.status(400).json({ success: false, error: `Not on this week's bench: ${invalid.join(', ')}` });
+    }
+
+    await client.query('BEGIN');
+    for (let i = 0; i < order.length; i++) {
+      await client.query(
+        `UPDATE rosters SET bench_order = $1
+         WHERE team_id = $2 AND week = $3 AND season = $4 AND player_id = $5`,
+        [i + 1, id, week, season, order[i]]
+      );
+    }
+    await client.query('COMMIT');
+
+    res.json({ success: true, week: parseInt(week), season, ordered: order.length });
+  } catch (error) {
+    try { await client.query('ROLLBACK'); } catch (e) { /* no txn */ }
+    console.error('Error setting bench order:', error);
     res.status(500).json({ success: false, error: error.message });
   } finally {
     client.release();

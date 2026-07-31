@@ -403,14 +403,48 @@ BEGIN
     WHERE r.team_id = p_team_id
         AND r.week = p_week
         AND r.season = p_season
-    GROUP BY p.player_id, p.name, p.position, p.team, r.position_slot, pcp.current_price, t.price, ps.total_points, f.home_team, f.away_team
+    GROUP BY p.player_id, p.name, p.position, p.team, r.position_slot, r.bench_order, pcp.current_price, t.price, ps.total_points, f.home_team, f.away_team
     ORDER BY
         CASE r.position_slot
             WHEN 'QB' THEN 1 WHEN 'RB1' THEN 2 WHEN 'RB2' THEN 3
             WHEN 'WR1' THEN 4 WHEN 'WR2' THEN 5 WHEN 'TE' THEN 6
             WHEN 'FLEX' THEN 7 WHEN 'DEF' THEN 8 WHEN 'K' THEN 9
             ELSE 10
-        END;
+        END,
+        r.bench_order NULLS LAST,
+        p.player_id;
+END;
+$$;
+
+
+--
+-- Name: copy_all_rosters_to_next_week(integer, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.copy_all_rosters_to_next_week(from_week integer, to_week integer, target_season integer DEFAULT 2024) RETURNS TABLE(teams_copied integer, players_copied integer)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  team_count INTEGER;
+  player_count INTEGER;
+BEGIN
+  -- Replace any existing rosters for the target week, carrying bench order
+  -- (auto_subbed resets to false via its default — a new week starts clean).
+  DELETE FROM rosters
+  WHERE week = to_week AND season = target_season;
+
+  INSERT INTO rosters (team_id, player_id, week, season, position_slot, bench_order)
+  SELECT team_id, player_id, to_week, season, position_slot, bench_order
+  FROM rosters
+  WHERE week = from_week AND season = target_season;
+
+  GET DIAGNOSTICS player_count = ROW_COUNT;
+
+  SELECT COUNT(DISTINCT team_id) INTO team_count
+  FROM rosters
+  WHERE week = to_week AND season = target_season;
+
+  RETURN QUERY SELECT team_count, player_count;
 END;
 $$;
 
@@ -1270,7 +1304,8 @@ CREATE TABLE public.rosters (
     acquired_date date DEFAULT CURRENT_DATE,
     position_slot character varying(10),
     team_id integer,
-    auto_subbed boolean DEFAULT false
+    auto_subbed boolean DEFAULT false,
+    bench_order integer
 );
 
 
