@@ -29,6 +29,7 @@ class SleeperProvider {
       team: player.team,
       status: player.status || 'active',
       search_rank: player.search_rank || null,
+      depth_chart_order: player.depth_chart_order ?? null,
     }));
   }
 
@@ -206,8 +207,25 @@ async function importPlayers() {
   // rows, 65% of them unusable (cleaned from prod 2026-07-24).
   const VALID_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF']);
 
+  // Existing rows always refresh, but NEW players must be on a current NFL
+  // depth chart (except DEF pseudo-players). Sleeper's dump carries thousands
+  // of retirees — some with stale teams (Le'Veon Bell: TB) and popularity-
+  // driven search_ranks (Witten: 378), so team/rank can't gate relevance;
+  // depth_chart_order can. Keeps pruned retirees from being re-added.
+  const existingResult = await pool.query(
+    `SELECT sleeper_id FROM players WHERE sleeper_id IS NOT NULL`
+  );
+  const existingIds = new Set(existingResult.rows.map((r) => r.sleeper_id));
+
   let imported = 0;
   for (const player of players) {
+    if (
+      !existingIds.has(player.sleeper_id) &&
+      player.position !== 'DEF' &&
+      player.depth_chart_order == null
+    ) {
+      continue;
+    }
     if (player.position && player.name && VALID_POSITIONS.has(player.position)) {
       // Insert with sleeper_id
       try {
@@ -230,6 +248,21 @@ async function importPlayers() {
   }
   
   console.log(`✓ Imported/updated ${imported} players to database`);
+
+  // Players Sleeper has dropped from its dump (long-retired) never get their
+  // row refreshed, so they'd keep a stale team forever and look draftable at
+  // floor price (the Adrian Peterson trap, found 2026-07-24). Clear the team
+  // so they read as free agents.
+  const dumpIds = players.map((p) => p.sleeper_id);
+  const stale = await pool.query(
+    `UPDATE players SET team = NULL
+     WHERE sleeper_id IS NOT NULL AND team IS NOT NULL
+       AND NOT (sleeper_id = ANY($1))`,
+    [dumpIds]
+  );
+  if (stale.rowCount > 0) {
+    console.log(`✓ Cleared stale team on ${stale.rowCount} players absent from the Sleeper dump`);
+  }
 }
 
 async function importWeekStats(week, season) {

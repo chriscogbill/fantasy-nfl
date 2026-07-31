@@ -4,6 +4,7 @@ const pool = require('../db/connection');
 const { getCurrentSeason } = require('../helpers/settings');
 const { requireAuth, requireTeamOwnership } = require('../middleware/requireAuth');
 const { stripPiiForAnon } = require('../middleware/stripPiiForAnon');
+const { joinGlobalLeague } = require('../helpers/globalLeague');
 
 // Public read routes stay accessible (spectator profiles) but must not
 // leak email addresses to anonymous callers.
@@ -106,24 +107,14 @@ router.post('/', requireAuth, async (req, res) => {
 
     const newTeam = result.rows[0];
 
-    // Automatically add team to the Overall league
+    // Every team automatically joins the season's global league (lazily
+    // created — no per-season admin step). The old version of this block
+    // looked up a league named 'Overall' that never existed, so it had
+    // silently never run. Never fail team creation over it.
     try {
-      const overallLeague = await pool.query(
-        `SELECT league_id FROM leagues WHERE league_name = 'Overall' AND season = $1 AND privacy_type = 'public'`,
-        [season]
-      );
-
-      if (overallLeague.rows.length > 0) {
-        await pool.query(
-          `INSERT INTO league_entries (league_id, team_id)
-           VALUES ($1, $2)
-           ON CONFLICT (league_id, team_id) DO NOTHING`,
-          [overallLeague.rows[0].league_id, newTeam.team_id]
-        );
-      }
+      await joinGlobalLeague(pool, newTeam.team_id, season);
     } catch (leagueError) {
-      console.error('Error adding team to Overall league:', leagueError);
-      // Don't fail the team creation if adding to Overall league fails
+      console.error('Error adding team to the global league:', leagueError);
     }
 
     res.status(201).json({

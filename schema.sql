@@ -905,7 +905,8 @@ CREATE TABLE public.leagues (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     league_admin_email character varying(100),
     privacy_type character varying(20) DEFAULT 'public'::character varying,
-    invite_code character varying(50)
+    invite_code character varying(50),
+    is_global boolean DEFAULT false
 );
 
 
