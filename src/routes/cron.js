@@ -17,6 +17,7 @@ const pool = require('../db/connection');
 const { getCurrentSeason } = require('../helpers/settings');
 const { requireAdminOrCron } = require('../middleware/requireAuth');
 const { importWeekStats } = require('../../importStats');
+const { applyAutoSubs } = require('../helpers/autoSubs');
 
 const LOCK_OFFSET_MS = 90 * 60 * 1000;
 
@@ -107,6 +108,17 @@ router.post('/tick', requireAdminOrCron, async (req, res) => {
       }
     }
 
+    // --- 2b. Tuesday auto-subs, after the final stats sweep ----------------
+    // Games ended Monday night; the <09:00 runs finished the stats. Idempotent
+    // by construction (swapped-in players played, so they never swap back out).
+    if (weekday === 'Tue' && hour >= 9 && hour < 12 && !isNaN(week) && week >= 1) {
+      log.push(`auto-subs due for week ${week}`);
+      if (!dryRun) {
+        const result = await applyAutoSubs(pool, week, season, false);
+        log.push(`auto-subs applied: ${result.swaps.length} of ${result.teamsChecked} team(s) changed`);
+      }
+    }
+
     // --- 3. Wednesday reprice on the completed week ------------------------
     if (weekday === 'Wed' && hour >= 1 && hour < 6 && !isNaN(week) && week >= 2) {
       const completed = week - 1;
@@ -138,6 +150,24 @@ router.post('/tick', requireAdminOrCron, async (req, res) => {
   } catch (error) {
     console.error('Error in cron tick:', error);
     res.status(500).json({ success: false, error: error.message, log });
+  }
+});
+
+// POST /api/cron/auto-subs - Apply (or preview) auto-subs for a completed week.
+// Body: { week, season?, dryRun? }. Also runs from the Tuesday tick window.
+router.post('/auto-subs', requireAdminOrCron, async (req, res) => {
+  try {
+    const week = parseInt(req.body && req.body.week);
+    if (isNaN(week) || week < 1 || week > 18) {
+      return res.status(400).json({ success: false, error: 'week (1-18) is required' });
+    }
+    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
+    const dryRun = !!req.body.dryRun;
+    const result = await applyAutoSubs(pool, week, season, dryRun);
+    res.json({ success: true, dryRun, ...result });
+  } catch (error) {
+    console.error('Error applying auto-subs:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

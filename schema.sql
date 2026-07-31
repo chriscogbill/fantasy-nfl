@@ -1268,7 +1268,8 @@ CREATE TABLE public.rosters (
     season integer NOT NULL,
     acquired_date date DEFAULT CURRENT_DATE,
     position_slot character varying(10),
-    team_id integer
+    team_id integer,
+    auto_subbed boolean DEFAULT false
 );
 
 
