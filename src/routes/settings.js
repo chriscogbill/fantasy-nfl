@@ -168,15 +168,6 @@ router.post('/clear-season-data', requireAdmin, async (req, res) => {
     // Delete in FK-safe order
     const deletions = {};
 
-    // League standings (depends on league_entries)
-    const standingsResult = await client.query(
-      `DELETE FROM league_standings ls
-       USING league_entries le, teams t
-       WHERE ls.entry_id = le.entry_id AND le.team_id = t.team_id AND t.season = $1`,
-      [season]
-    );
-    deletions.league_standings = standingsResult.rowCount;
-
     // League entries (depends on teams)
     const entriesResult = await client.query(
       `DELETE FROM league_entries le
