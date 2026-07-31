@@ -264,67 +264,6 @@ async function createRostersForAllTeams(teamIds) {
   console.log('\n✓ All rosters created');
 }
 
-async function calculateInitialStandings(leagueIds) {
-  console.log('\n=== Calculating Week 1 Standings ===\n');
-  
-  for (const leagueId of leagueIds) {
-    // Get all teams in this league
-    const teams = await pool.query(
-      `SELECT le.team_id, t.team_name
-       FROM league_entries le
-       JOIN teams t ON le.team_id = t.team_id
-       WHERE le.league_id = $1`,
-      [leagueId]
-    );
-    
-    for (const team of teams.rows) {
-      // Calculate week 1 points (only starters)
-      const points = await pool.query(
-        `SELECT SUM(ps.total_points) as total
-         FROM rosters r
-         JOIN player_scores ps ON r.player_id = ps.player_id
-         WHERE r.team_id = $1 
-           AND r.week = $2
-           AND r.season = $3
-           AND ps.week = $2
-           AND ps.season = $3
-           AND ps.league_format = 'ppr'
-           AND r.position_slot != 'BENCH'`,
-        [team.team_id, START_WEEK, SEASON]
-      );
-      
-      const weekPoints = parseFloat(points.rows[0].total) || 0;
-      
-      // Insert into standings
-      await pool.query(
-        `INSERT INTO league_standings 
-         (league_id, team_id, week, season, week_points, total_points)
-         VALUES ($1, $2, $3, $4, $5, $5)`,
-        [leagueId, team.team_id, START_WEEK, SEASON, weekPoints]
-      );
-    }
-    
-    // Calculate ranks
-    await pool.query(
-      `UPDATE league_standings ls
-       SET rank = sub.rank
-       FROM (
-         SELECT league_id, team_id, week, season,
-                RANK() OVER (PARTITION BY league_id, week, season ORDER BY total_points DESC) as rank
-         FROM league_standings
-         WHERE league_id = $1 AND week = $2 AND season = $3
-       ) sub
-       WHERE ls.league_id = sub.league_id 
-         AND ls.team_id = sub.team_id 
-         AND ls.week = sub.week 
-         AND ls.season = sub.season`,
-      [leagueId, START_WEEK, SEASON]
-    );
-    
-    console.log(`✓ Calculated standings for league ${leagueId}`);
-  }
-}
-
 async function showSampleData() {
   console.log('\n=== Sample Data Summary ===\n');
   
@@ -342,17 +281,18 @@ async function showSampleData() {
     console.log(`  - ${t.team_name}: $${t.current_spent}m spent, $${t.remaining_budget}m remaining`);
   });
   
-  // Show standings
-  const standings = await pool.query(
-    `SELECT l.league_name, t.team_name, ls.total_points, ls.rank
-     FROM league_standings ls
-     JOIN leagues l ON ls.league_id = l.league_id
-     JOIN teams t ON ls.team_id = t.team_id
-     WHERE ls.week = $1 AND ls.season = $2
-     ORDER BY l.league_id, ls.rank
-     LIMIT 10`,
-    [START_WEEK, SEASON]
-  );
+  // Show standings (live-computed per league)
+  const leaguesRes = await pool.query('SELECT league_id, league_name FROM leagues ORDER BY league_id');
+  const standings = { rows: [] };
+  for (const lg of leaguesRes.rows) {
+    const res = await pool.query(
+      `SELECT $2::varchar AS league_name, s.team_name, s.total_points, s.rank
+       FROM get_league_standings($1, $3, $4) s
+       ORDER BY s.rank LIMIT 3`,
+      [lg.league_id, lg.league_name, START_WEEK, SEASON]
+    );
+    standings.rows.push(...res.rows);
+  }
   
   console.log('\nLeague Standings (Top 3 per league):');
   let currentLeague = null;
@@ -377,7 +317,7 @@ async function run() {
     const teamIds = await createTeams();
     await assignTeamsToLeagues(leagueIds, teamIds);
     await createRostersForAllTeams(teamIds);
-    await calculateInitialStandings(leagueIds);
+    // Standings are live-computed by get_league_standings — nothing to precalculate.
     
     // Show summary
     await showSampleData();
