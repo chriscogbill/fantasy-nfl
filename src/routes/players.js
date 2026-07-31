@@ -779,6 +779,190 @@ router.get('/top/:position', async (req, res) => {
   }
 });
 
+// Allow the weekly cron to call reprice with a shared secret; humans need admin.
+function requireAdminOrCron(req, res, next) {
+  const secret = process.env.CRON_SECRET;
+  if (secret && req.get('x-cron-secret') === secret) return next();
+  return requireAdmin(req, res, next);
+}
+
+// POST /api/players/reprice - In-season weekly reprice (admin or cron)
+//
+// Banded rank drift (design agreed 2026-07-24):
+// - Players who PLAYED in the priced week get a bounded move toward their
+//   form rank: delta = (price_rank - form_rank) / pool, shrunk by
+//   games/(games+2) so early-season noise moves less. Bands: >=20% of the
+//   pool -> ±0.3, 10-20% -> ±0.2, 6-10% -> ±0.1, inside 6% -> no change.
+// - Players who did NOT play while their team had a fixture decay a flat
+//   -0.1 regardless of form (injury/benching discount that can't compound
+//   into a collapse, and a hot week can't keep rising from the bench).
+// - Team on bye -> untouched. Clamped to [minPrice, maxPrice], 0.1 steps.
+// "Played" = any non-zero stat that week (Sleeper emits all-zero rows for
+// rostered inactives), except DEF where a stats row itself means the unit
+// played (a shutout can be legitimately all-zero).
+router.post('/reprice', requireAdminOrCron, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const dryRun = !!req.body.dryRun;
+    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
+
+    // Default to the most recently completed week (reprice runs after the
+    // week advances, so current_week - 1).
+    let week = req.body.week !== undefined ? parseInt(req.body.week) : null;
+    if (week === null) {
+      const wk = await client.query(
+        `SELECT setting_value FROM app_settings WHERE setting_key = 'current_week'`
+      );
+      const cur = parseInt(wk.rows[0]?.setting_value);
+      if (isNaN(cur) || cur < 2) {
+        return res.status(400).json({
+          success: false,
+          error: 'No completed week to reprice yet — pass an explicit week, or advance past week 1 first'
+        });
+      }
+      week = cur - 1;
+    }
+    if (isNaN(week) || week < 1 || week > 18) {
+      return res.status(400).json({ success: false, error: 'week must be 1-18' });
+    }
+
+    const MIN_PRICE = DEFAULT_ALGORITHM_PARAMS.minPrice;
+    const MAX_PRICE = DEFAULT_ALGORITHM_PARAMS.maxPrice;
+    const DEAD_ZONE = 0.06;
+    const DECAY = -0.1;
+
+    // Priced players
+    const playersResult = await client.query(
+      `SELECT pl.player_id, pl.name, pl.position, pl.team, pcp.current_price::float AS price
+       FROM players pl
+       JOIN player_current_prices pcp ON pcp.player_id = pl.player_id AND pcp.season = $1
+       WHERE pl.position IN ('QB','RB','WR','TE','K','DEF')`,
+      [season]
+    );
+
+    // Season-to-date form for weeks <= priced week. "Played" filters out
+    // Sleeper's all-zero rows for rostered inactives.
+    const playedCondition = `(pl.position = 'DEF' OR
+        st.passing_yards <> 0 OR st.passing_tds <> 0 OR st.interceptions <> 0 OR st.completions <> 0 OR st.attempts <> 0 OR
+        st.rushing_yards <> 0 OR st.rushing_tds <> 0 OR st.rushing_attempts <> 0 OR
+        st.receptions <> 0 OR st.receiving_yards <> 0 OR st.receiving_tds <> 0 OR st.targets <> 0 OR
+        st.fumbles_lost <> 0 OR st.two_point_conversions <> 0 OR
+        st.fg_0_19 <> 0 OR st.fg_20_29 <> 0 OR st.fg_30_39 <> 0 OR st.fg_40_49 <> 0 OR st.fg_50p <> 0 OR
+        st.xp_made <> 0 OR st.xp_missed <> 0 OR st.fga <> 0 OR st.def_td <> 0)`;
+    const formResult = await client.query(
+      `SELECT st.player_id, COUNT(*)::int AS games,
+              COALESCE(SUM(sc.total_points), 0)::float AS pts,
+              BOOL_OR(st.week = $2) AS played_this_week
+       FROM player_stats st
+       JOIN players pl ON pl.player_id = st.player_id
+       JOIN player_scores sc ON sc.player_id = st.player_id
+         AND sc.week = st.week AND sc.season = st.season AND sc.league_format = 'ppr'
+       WHERE st.season = $1 AND st.week <= $2 AND ${playedCondition}
+       GROUP BY st.player_id`,
+      [season, week]
+    );
+    const form = new Map(formResult.rows.map(r => [r.player_id, r]));
+
+    // Teams with a fixture in the priced week (everyone else is on bye)
+    const fixturesResult = await client.query(
+      `SELECT home_team, away_team FROM nfl_fixtures WHERE season = $1 AND week = $2`,
+      [season, week]
+    );
+    const teamsPlaying = new Set();
+    for (const f of fixturesResult.rows) { teamsPlaying.add(f.home_team); teamsPlaying.add(f.away_team); }
+
+    // Rank pools per position: players with >=1 played game this season
+    const byPos = {};
+    for (const p of playersResult.rows) {
+      if (form.has(p.player_id)) (byPos[p.position] = byPos[p.position] || []).push(p);
+    }
+    const priceRank = new Map();
+    const formRank = new Map();
+    const poolSize = new Map();
+    for (const pos of Object.keys(byPos)) {
+      const arr = byPos[pos];
+      const byPrice = [...arr].sort((a, b) => b.price - a.price ||
+        (form.get(b.player_id).pts / form.get(b.player_id).games) - (form.get(a.player_id).pts / form.get(a.player_id).games));
+      const byForm = [...arr].sort((a, b) =>
+        (form.get(b.player_id).pts / form.get(b.player_id).games) - (form.get(a.player_id).pts / form.get(a.player_id).games));
+      byPrice.forEach((x, i) => priceRank.set(x.player_id, i + 1));
+      byForm.forEach((x, i) => formRank.set(x.player_id, i + 1));
+      arr.forEach(x => poolSize.set(x.player_id, arr.length));
+    }
+
+    const moves = [];
+    const summary = { pool: playersResult.rows.length, played: 0, rankMoves: 0, decayed: 0, byes: 0, unchanged: 0 };
+    for (const p of playersResult.rows) {
+      const f = form.get(p.player_id);
+      let step = 0;
+      let reason = 'weekly_reprice';
+      if (f && f.played_this_week) {
+        summary.played++;
+        const d = ((priceRank.get(p.player_id) - formRank.get(p.player_id)) / poolSize.get(p.player_id))
+          * (f.games / (f.games + 2));
+        if (d >= 0.20) step = 0.3; else if (d >= 0.10) step = 0.2; else if (d >= DEAD_ZONE) step = 0.1;
+        else if (d <= -0.20) step = -0.3; else if (d <= -0.10) step = -0.2; else if (d <= -DEAD_ZONE) step = -0.1;
+      } else if (!teamsPlaying.has(p.team)) {
+        summary.byes++;
+      } else {
+        step = DECAY;
+        reason = 'inactivity_decay';
+      }
+      const newPrice = Math.min(MAX_PRICE, Math.max(MIN_PRICE, Math.round((p.price + step) * 10) / 10));
+      if (newPrice !== p.price) {
+        moves.push({ ...p, newPrice, change: Math.round((newPrice - p.price) * 10) / 10, reason });
+        if (reason === 'inactivity_decay') summary.decayed++; else summary.rankMoves++;
+      } else {
+        summary.unchanged++;
+      }
+    }
+
+    if (!dryRun) {
+      const dayResult = await client.query(
+        `SELECT setting_value FROM app_settings WHERE setting_key = 'current_day'`
+      );
+      const day = parseInt(dayResult.rows[0]?.setting_value) || 1;
+
+      await client.query('BEGIN');
+      for (const m of moves) {
+        await client.query(
+          `UPDATE player_current_prices
+           SET current_price = $1, last_updated = CURRENT_TIMESTAMP
+           WHERE player_id = $2 AND season = $3`,
+          [m.newPrice, m.player_id, season]
+        );
+        await client.query(
+          `INSERT INTO player_price_history (player_id, price, price_change, change_reason, week, day, season)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [m.player_id, m.newPrice, m.change, m.reason, week, day, season]
+        );
+      }
+      await client.query('COMMIT');
+    }
+
+    const risers = moves.filter(m => m.change > 0).sort((a, b) => b.change - a.change).slice(0, 15);
+    const fallers = moves.filter(m => m.change < 0 && m.reason === 'weekly_reprice')
+      .sort((a, b) => a.change - b.change).slice(0, 15);
+
+    res.json({
+      success: true,
+      dryRun,
+      season,
+      week,
+      summary: { ...summary, totalMoves: moves.length },
+      risers: risers.map(m => `${m.position} ${m.name}: $${m.price} → $${m.newPrice}`),
+      fallers: fallers.map(m => `${m.position} ${m.name}: $${m.price} → $${m.newPrice}`)
+    });
+  } catch (error) {
+    try { await client.query('ROLLBACK'); } catch (e) { /* no txn open */ }
+    console.error('Error running reprice:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
 // PUT /api/players/:id/price - Adjust player price (admin only)
 router.put('/:id/price', requireAdmin, async (req, res) => {
   const client = await pool.connect();
