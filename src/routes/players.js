@@ -174,21 +174,23 @@ const DEFAULT_ALGORITHM_PARAMS = {
 
 // Age adjustment applied to points-per-game BEFORE ranking (Chris,
 // 2026-08-01: a 30-year-old McCaffrey shouldn't out-price 24-year-old
-// Bijan/Gibbs off last season alone). Decline starts at declineFrom
-// (that age itself is not penalised), declineRate per year after it,
-// capped at maxPenalty; youngUntil and below get youngBonus. RB ages
+// Bijan/Gibbs off last season alone). Both sides are graduated per year
+// (Chris: a 22-year-old second-year deserves more boost than a
+// 25-year-old vet like Kyren Williams): youth bonus accrues youthRate
+// per year BELOW neutralYoung (capped maxBonus); decline accrues
+// declineRate per year past declineFrom (capped maxPenalty). RB ages
 // hardest, QB barely; K has no meaningful age curve and DEF no age.
 const AGE_CURVES = {
-  RB: { youngUntil: 25, youngBonus: 0.05, declineFrom: 27, declineRate: 0.04, maxPenalty: 0.20 },
-  WR: { youngUntil: 24, youngBonus: 0.03, declineFrom: 30, declineRate: 0.03, maxPenalty: 0.15 },
-  TE: { youngUntil: 25, youngBonus: 0.03, declineFrom: 30, declineRate: 0.03, maxPenalty: 0.15 },
-  QB: { youngUntil: 25, youngBonus: 0.02, declineFrom: 35, declineRate: 0.03, maxPenalty: 0.12 },
+  RB: { neutralYoung: 26, youthRate: 0.02, maxBonus: 0.08, declineFrom: 27, declineRate: 0.04, maxPenalty: 0.20 },
+  WR: { neutralYoung: 26, youthRate: 0.015, maxBonus: 0.06, declineFrom: 30, declineRate: 0.03, maxPenalty: 0.15 },
+  TE: { neutralYoung: 26, youthRate: 0.015, maxBonus: 0.06, declineFrom: 30, declineRate: 0.03, maxPenalty: 0.15 },
+  QB: { neutralYoung: 26, youthRate: 0.01, maxBonus: 0.04, declineFrom: 35, declineRate: 0.03, maxPenalty: 0.12 },
 };
 
 function ageFactor(position, age) {
   const c = AGE_CURVES[position];
   if (!c || age == null) return 1;
-  if (age <= c.youngUntil) return 1 + c.youngBonus;
+  if (age < c.neutralYoung) return 1 + Math.min(c.maxBonus, (c.neutralYoung - age) * c.youthRate);
   if (age > c.declineFrom) return 1 - Math.min(c.maxPenalty, (age - c.declineFrom) * c.declineRate);
   return 1;
 }
