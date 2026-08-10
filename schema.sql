@@ -1069,7 +1069,8 @@ CREATE TABLE public.players (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     sleeper_id character varying(50),
-    search_rank integer
+    search_rank integer,
+    age integer
 );
 
 
