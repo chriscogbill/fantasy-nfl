@@ -238,7 +238,11 @@ router.post('/roll-forward-season', requireAdmin, async (req, res) => {
       `INSERT INTO player_season_totals (player_id, season, league_format, total_points, passing_points, rushing_points, receiving_points, kicking_points, defense_points, misc_points, games_played)
        SELECT player_id, season, league_format,
          SUM(total_points), SUM(passing_points), SUM(rushing_points), SUM(receiving_points),
-         SUM(kicking_points), SUM(defense_points), SUM(misc_points), COUNT(*)
+         SUM(kicking_points), SUM(defense_points), SUM(misc_points),
+         -- Played games only: Sleeper emits zero rows for rostered inactives,
+         -- and counting them cratered injured stars' ppg (Burrow priced $4.9
+         -- off 134pts/17 "games" when he only actually played a handful)
+         COUNT(*) FILTER (WHERE total_points <> 0)
        FROM player_scores
        WHERE season = $1
        GROUP BY player_id, season, league_format
