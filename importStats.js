@@ -244,7 +244,23 @@ async function importPlayers() {
         );
         imported++;
       } catch (error) {
-        // Skip duplicates
+        // A (name, position) unique collision means an old row exists for
+        // this player WITHOUT a sleeper_id — silently swallowing it left
+        // Josh Allen an identity orphan for years (no stats ever matched,
+        // priced as a no-history player at 2026 launch). Claim the row.
+        if (error.code === '23505') {
+          const claimed = await pool.query(
+            `UPDATE players SET sleeper_id = $1, team = $2, status = $3, search_rank = $4, age = $5
+             WHERE name = $6 AND position = $7 AND sleeper_id IS NULL`,
+            [player.sleeper_id, player.team, player.status, player.search_rank, player.age, player.name, player.position]
+          );
+          if (claimed.rowCount > 0) {
+            console.log(`  claimed orphan row for ${player.name} (${player.position})`);
+            imported++;
+          }
+        } else {
+          console.error(`  insert failed for ${player.name}: ${error.message}`);
+        }
       }
     }
   }
