@@ -1038,12 +1038,23 @@ router.put('/:id/price', requireAdmin, async (req, res) => {
       [newPrice, id, season]
     );
 
-    // Record in price history
-    await client.query(
-      `INSERT INTO player_price_history (player_id, price, price_change, change_reason, week, day, season)
-       VALUES ($1, $2, $3, 'admin_manual', $4, $5, $6)`,
-      [id, newPrice, priceChange, week, day, season]
+    // Record in price history — but only in-season. Price history is the
+    // ledger of in-season MOVEMENT; during Setup/Preseason the admin is just
+    // iterating toward the starting price, and logging every nudge buried
+    // the real signal (1,504 noise rows cleared from the 2026 setup,
+    // Chris 2026-08-12). The final starting price lives in
+    // player_current_prices and is archived as final_price at season end.
+    const weekSetting = await client.query(
+      `SELECT setting_value FROM app_settings WHERE setting_key = 'current_week'`
     );
+    const inSeason = !isNaN(parseInt(weekSetting.rows[0]?.setting_value));
+    if (inSeason) {
+      await client.query(
+        `INSERT INTO player_price_history (player_id, price, price_change, change_reason, week, day, season)
+         VALUES ($1, $2, $3, 'admin_manual', $4, $5, $6)`,
+        [id, newPrice, priceChange, week, day, season]
+      );
+    }
 
     await client.query('COMMIT');
 
