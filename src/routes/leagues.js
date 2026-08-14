@@ -55,7 +55,9 @@ router.post('/', requireAuth, async (req, res) => {
     const {
       leagueName,
       startWeek = 1,
-      endWeek = 18,
+      // Week 18 is a resting-week dud (starters sat ahead of playoffs), so
+      // leagues run to week 17 by default
+      endWeek = 17,
       privacyType = 'public'
     } = req.body;
     // Creator + admin come from the authenticated session, NEVER the body

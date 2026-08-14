@@ -13,7 +13,7 @@ async function ensureGlobalLeague(pool, season) {
   const created = await pool.query(
     `INSERT INTO leagues
        (league_name, season, created_by, league_admin_email, start_week, end_week, status, privacy_type, is_global)
-     VALUES ('Global League', $1, NULL, NULL, 1, 18, 'open', 'public', true)
+     VALUES ('Global League', $1, NULL, NULL, 1, 17, 'open', 'public', true)
      RETURNING league_id`,
     [season]
   );
