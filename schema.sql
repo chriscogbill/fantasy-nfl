@@ -332,7 +332,7 @@ $$;
 -- Name: get_lineup_with_points(integer, integer, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_lineup_with_points(p_team_id integer, p_week integer, p_season integer DEFAULT 2024) RETURNS TABLE(player_id integer, player_name character varying, player_position character varying, player_team character varying, position_slot character varying, purchase_price numeric, current_price numeric, sell_price numeric, week_points numeric, season_avg numeric, is_starter boolean, opponent character varying, season_total numeric, fixture_week_1 character varying, fixture_week_2 character varying, fixture_week_3 character varying)
+CREATE FUNCTION public.get_lineup_with_points(p_team_id integer, p_week integer, p_season integer DEFAULT 2024) RETURNS TABLE(player_id integer, player_name character varying, player_position character varying, player_team character varying, position_slot character varying, purchase_price numeric, current_price numeric, sell_price numeric, week_points numeric, season_avg numeric, is_starter boolean, opponent character varying, season_total numeric, fixture_week_1 character varying, fixture_week_2 character varying, fixture_week_3 character varying, prev_season_total numeric)
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -384,7 +384,10 @@ BEGIN
         FROM nfl_fixtures f3
         WHERE f3.season = p_season AND f3.week = p_week + 3
             AND (f3.home_team = p.team OR f3.away_team = p.team)
-        LIMIT 1) as fixture_week_3
+        LIMIT 1) as fixture_week_3,
+        -- Previous-season total for Preseason display (there are no
+        -- current-season points before week 1)
+        pst.total_points as prev_season_total
     FROM rosters r
     JOIN players p ON r.player_id = p.player_id
     JOIN player_current_prices pcp ON p.player_id = pcp.player_id
@@ -397,13 +400,15 @@ BEGIN
         AND ps.week = p_week AND ps.season = p_season AND ps.league_format = 'ppr'
     LEFT JOIN player_scores ps_all ON p.player_id = ps_all.player_id
         AND ps_all.season = p_season AND ps_all.league_format = 'ppr'
+    LEFT JOIN player_season_totals pst ON pst.player_id = p.player_id
+        AND pst.season = p_season - 1 AND pst.league_format = 'ppr'
     LEFT JOIN nfl_fixtures f ON f.season = p_season
         AND f.week = p_week
         AND (f.home_team = p.team OR f.away_team = p.team)
     WHERE r.team_id = p_team_id
         AND r.week = p_week
         AND r.season = p_season
-    GROUP BY p.player_id, p.name, p.position, p.team, r.position_slot, r.bench_order, pcp.current_price, t.price, ps.total_points, f.home_team, f.away_team
+    GROUP BY p.player_id, p.name, p.position, p.team, r.position_slot, r.bench_order, pcp.current_price, t.price, ps.total_points, pst.total_points, f.home_team, f.away_team
     ORDER BY
         CASE r.position_slot
             WHEN 'QB' THEN 1 WHEN 'RB1' THEN 2 WHEN 'RB2' THEN 3
