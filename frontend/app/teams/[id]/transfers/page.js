@@ -1002,7 +1002,7 @@ export default function TransfersPage() {
                           </div>
                         </div>
                         <div className="text-center w-20">
-                          <div className="text-xs text-gray-500 mb-1">Sell</div>
+                          <div className="text-xs text-gray-500 mb-1" title="Sell price = purchase price + half of any price rise (rounded down). Price falls are fully yours.">Sell</div>
                           <div className="text-sm font-semibold text-gray-700">
                             ${parseFloat(player.sell_price || player.current_price).toFixed(1)}M
                           </div>
