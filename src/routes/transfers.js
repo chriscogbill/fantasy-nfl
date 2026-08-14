@@ -132,15 +132,17 @@ router.post('/execute', requireTeamOwnership({ from: 'body' }), async (req, res)
       playersIn: []
     };
 
-    // 2. Remove players (sell)
+    // 2. Remove players (sell). Sale proceeds follow the FPL rule — purchase
+    // price plus half of any rise, rounded down to $0.1; falls are fully
+    // yours (get_sell_price is the single source of truth, also used by
+    // calculate_transfer_impact and the lineup display).
     for (const playerId of playersOut) {
-      // Get player price
       const priceResult = await client.query(
-        `SELECT current_price FROM player_current_prices WHERE player_id = $1`,
-        [playerId]
+        `SELECT get_sell_price($1, $2, $3) AS sell_price`,
+        [teamId, playerId, season]
       );
 
-      if (priceResult.rows.length === 0) {
+      if (priceResult.rows.length === 0 || priceResult.rows[0].sell_price === null) {
         await client.query('ROLLBACK');
         return res.status(404).json({
           success: false,
@@ -148,7 +150,7 @@ router.post('/execute', requireTeamOwnership({ from: 'body' }), async (req, res)
         });
       }
 
-      const price = parseFloat(priceResult.rows[0].current_price);
+      const price = parseFloat(priceResult.rows[0].sell_price);
 
       // Remove from roster
       const deleteResult = await client.query(

@@ -20,6 +20,40 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: get_sell_price(integer, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+-- FPL-style sell pricing: you keep half of any price rise (rounded down to
+-- $0.1); falls are fully yours. Single source of truth for the transfer
+-- money maths (calculate_transfer_impact), the recorded sale price, and the
+-- lineup display.
+CREATE FUNCTION public.get_sell_price(p_team_id integer, p_player_id integer, p_season integer) RETURNS numeric
+    LANGUAGE plpgsql STABLE
+    AS $$
+DECLARE
+    v_current NUMERIC;
+    v_purchase NUMERIC;
+BEGIN
+    SELECT pcp.current_price INTO v_current
+    FROM player_current_prices pcp
+    WHERE pcp.player_id = p_player_id AND pcp.season = p_season;
+    IF v_current IS NULL THEN RETURN NULL; END IF;
+
+    SELECT t.price INTO v_purchase
+    FROM transfers t
+    WHERE t.team_id = p_team_id AND t.player_id = p_player_id
+      AND t.season = p_season AND t.transfer_type = 'buy'
+    ORDER BY t.transfer_id DESC LIMIT 1;
+
+    IF v_purchase IS NULL OR v_current <= v_purchase THEN
+        RETURN v_current;
+    END IF;
+    RETURN v_purchase + FLOOR((v_current - v_purchase) * 10 / 2) / 10;
+END;
+$$;
+
+
+--
 -- Name: calculate_transfer_impact(integer, integer, integer, integer[], integer[]); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -50,11 +84,10 @@ BEGIN
     FROM teams t
     WHERE t.team_id = p_team_id;
 
-    -- Calculate money from selling players
-    SELECT COALESCE(SUM(pcp.current_price), 0) INTO v_money_freed
-    FROM unnest(p_players_out) AS p_out(player_id)
-    JOIN player_current_prices pcp ON pcp.player_id = p_out.player_id
-    WHERE pcp.season = p_season;
+    -- Calculate money from selling players (FPL rule: purchase + half of
+    -- any rise, rounded down to $0.1 — see get_sell_price)
+    SELECT COALESCE(SUM(get_sell_price(p_team_id, p_out.player_id, p_season)), 0) INTO v_money_freed
+    FROM unnest(p_players_out) AS p_out(player_id);
 
     -- Calculate cost of buying players
     SELECT COALESCE(SUM(pcp.current_price), 0) INTO v_money_needed
@@ -345,7 +378,7 @@ BEGIN
         r.position_slot,
         COALESCE(t.price, pcp.current_price) as purchase_price,
         pcp.current_price as current_price,
-        pcp.current_price as sell_price,
+        get_sell_price(p_team_id, p.player_id, p_season) as sell_price,
         ps.total_points as week_points,
         ROUND(AVG(ps_all.total_points) FILTER (WHERE ps_all.week < p_week), 2) as season_avg,
         (r.position_slot != 'BENCH') as is_starter,
