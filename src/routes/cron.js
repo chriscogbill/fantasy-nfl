@@ -84,6 +84,9 @@ router.post('/tick', requireAdminOrCron, async (req, res) => {
                 [week, next, season]
               );
               log.push(`rosters copied: ${JSON.stringify(copy.rows[0] || null)}`);
+              // New week = +1 free transfer for every team, banked up to 5
+              const ft = await pool.query(`SELECT increment_weekly_transfers($1)`, [season]);
+              log.push(`weekly free transfer granted to ${ft.rows[0].increment_weekly_transfers} teams`);
             }
           }
           week = next;

@@ -845,9 +845,10 @@ CREATE FUNCTION public.increment_weekly_transfers(p_season integer DEFAULT 2024)
 DECLARE
     v_teams_updated INTEGER;
 BEGIN
-    -- Add 1 free transfer to all teams for the given season
+    -- Add 1 free transfer to all teams for the given season, banked up to a
+    -- cap of 5 (prevents hoarding a full-team rebuild)
     UPDATE teams
-    SET free_transfers_remaining = free_transfers_remaining + 1
+    SET free_transfers_remaining = LEAST(free_transfers_remaining + 1, 5)
     WHERE season = p_season;
 
     GET DIAGNOSTICS v_teams_updated = ROW_COUNT;

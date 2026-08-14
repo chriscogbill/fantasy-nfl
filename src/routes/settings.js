@@ -110,6 +110,9 @@ router.put('/:key', requireAdmin, async (req, res) => {
             [fromWeek, toWeek, currentSeason]
           );
           console.log(`Copied rosters from Week ${fromWeek} to Week ${toWeek}:`, copyResult.rows[0]);
+          // New week = +1 free transfer for every team, banked up to 5
+          const ft = await pool.query(`SELECT increment_weekly_transfers($1)`, [currentSeason]);
+          console.log(`Granted weekly free transfer to ${ft.rows[0].increment_weekly_transfers} teams`);
         }
       } else if (value === 'Preseason') {
         console.log('Set to Preseason - no roster copying needed');
