@@ -935,7 +935,7 @@ CREATE TABLE public.leagues (
     league_type character varying(20) DEFAULT 'season_long'::character varying,
     status character varying(20) DEFAULT 'open'::character varying,
     start_week integer DEFAULT 1,
-    end_week integer DEFAULT 18,
+    end_week integer DEFAULT 17,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     league_admin_email character varying(100),
     privacy_type character varying(20) DEFAULT 'public'::character varying,

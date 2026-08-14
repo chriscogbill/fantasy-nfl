@@ -10,7 +10,7 @@ export default function CreateLeaguePage() {
   const [leagueName, setLeagueName] = useState('');
   const [privacyType, setPrivacyType] = useState('private');
   const [startWeek, setStartWeek] = useState(1);
-  const [endWeek, setEndWeek] = useState(18);
+  const [endWeek, setEndWeek] = useState(17);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [createdLeague, setCreatedLeague] = useState(null);
