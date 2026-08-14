@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../db/connection');
 const { getCurrentSeason } = require('../helpers/settings');
 const { requireTeamOwnership } = require('../middleware/requireAuth');
+const { applyDefaultLineup } = require('../helpers/defaultLineup');
 
 // POST /api/transfers/preview - Preview a transfer (calculate costs)
 router.post('/preview', requireTeamOwnership({ from: 'body' }), async (req, res) => {
@@ -222,6 +223,11 @@ router.post('/execute', requireTeamOwnership({ from: 'body' }), async (req, res)
     if (currentWeek !== 'Preseason') {
       newFreeTransfers = Math.max(0, freeTransfersAvailable - transfersUsed);
     }
+
+    // If this purchase just completed the initial 15-man roster and no
+    // lineup has been set, default the starters (priciest per slot) so the
+    // team isn't an empty lineup page — owners can rearrange freely.
+    await applyDefaultLineup(client, teamId, week, season);
 
     await client.query(
       `UPDATE teams
