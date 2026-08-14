@@ -308,13 +308,33 @@ export default function LineupPage() {
 
   // Bench renders in bench order (auto-sub priority) — the API returns rows
   // already sorted by bench_order, so the state array order IS the priority.
+  // Ordering only means anything WITHIN a substitution group: RB/WR/TE all
+  // compete for RB/WR/FLEX/TE slots so they order together, while a backup
+  // QB/K/DEF can only ever fill its own slot (ordering a K against a WR was
+  // meaningless — Chris, launch week).
   const sortedBench = bench;
+  const BENCH_GROUPS = [
+    { key: 'FLEX', label: 'RB / WR / TE (flex pool)', positions: ['RB', 'WR', 'TE'] },
+    { key: 'QB', label: 'QB', positions: ['QB'] },
+    { key: 'K', label: 'K', positions: ['K'] },
+    { key: 'DEF', label: 'DEF', positions: ['DEF'] },
+  ];
+  const benchGroups = BENCH_GROUPS.map((g) => ({
+    ...g,
+    players: bench.filter((p) => g.positions.includes(p.player_position)),
+  })).filter((g) => g.players.length > 0);
 
-  async function moveBenchPlayer(index, direction) {
+  async function moveBenchPlayer(groupKey, index, direction) {
+    const group = benchGroups.find((g) => g.key === groupKey);
+    if (!group) return;
     const target = index + direction;
-    if (target < 0 || target >= bench.length) return;
-    const newBench = [...bench];
-    [newBench[index], newBench[target]] = [newBench[target], newBench[index]];
+    if (target < 0 || target >= group.players.length) return;
+    const newGroupPlayers = [...group.players];
+    [newGroupPlayers[index], newGroupPlayers[target]] = [newGroupPlayers[target], newGroupPlayers[index]];
+    // Rebuild the global bench order as the groups concatenated — auto-subs
+    // only compares order within slot-compatible candidates, so group-local
+    // order is what matters.
+    const newBench = benchGroups.flatMap((g) => (g.key === groupKey ? newGroupPlayers : g.players));
     setBench(newBench);
     try {
       await api.setBenchOrder(teamId, {
@@ -474,33 +494,39 @@ export default function LineupPage() {
         {bench.length === 0 ? (
           <div className="text-gray-500">No players on bench</div>
         ) : (
-          <div className="space-y-2">
-            {sortedBench.map((player, benchIndex) => (
+          <div className="space-y-4">
+            {benchGroups.map((group) => (
+            <div key={group.key}>
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{group.label}</div>
+              <div className="space-y-2">
+              {group.players.map((player, benchIndex) => (
               <div
                 key={player.player_id}
                 className="p-4 bg-gray-50 border border-gray-200 rounded-lg"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {!lineupLocked && (
+                    {!lineupLocked && group.players.length > 1 && (
                       <div className="flex flex-col">
                         <button
-                          onClick={() => moveBenchPlayer(benchIndex, -1)}
+                          onClick={() => moveBenchPlayer(group.key, benchIndex, -1)}
                           disabled={benchIndex === 0}
                           className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer leading-none"
                           title="Move up in sub priority"
                         >▲</button>
                         <button
-                          onClick={() => moveBenchPlayer(benchIndex, 1)}
-                          disabled={benchIndex === bench.length - 1}
+                          onClick={() => moveBenchPlayer(group.key, benchIndex, 1)}
+                          disabled={benchIndex === group.players.length - 1}
                           className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer leading-none"
                           title="Move down in sub priority"
                         >▼</button>
                       </div>
                     )}
-                    <span className="w-7 h-7 flex items-center justify-center bg-gray-300 text-gray-700 rounded-full text-sm font-bold" title="Auto-sub priority">
-                      {benchIndex + 1}
-                    </span>
+                    {group.players.length > 1 && (
+                      <span className="w-7 h-7 flex items-center justify-center bg-gray-300 text-gray-700 rounded-full text-sm font-bold" title="Auto-sub priority within this group">
+                        {benchIndex + 1}
+                      </span>
+                    )}
                     <span className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm font-semibold">
                       {player.player_position}
                     </span>
@@ -553,6 +579,9 @@ export default function LineupPage() {
                   </div>}
                 </div>
               </div>
+              ))}
+              </div>
+            </div>
             ))}
           </div>
         )}
