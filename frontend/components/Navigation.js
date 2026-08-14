@@ -15,6 +15,7 @@ export default function Navigation() {
   const [currentDay, setCurrentDay] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     loadCurrentSettings();
@@ -230,8 +231,9 @@ export default function Navigation() {
               </div>
             </div>
 
-            {/* Right side - Year/Week/Day controls */}
-            <div className="flex items-center">
+            {/* Right side - Year/Week/Day controls (desktop; on mobile these
+                live inside the burger menu so they can't collide with the logo) */}
+            <div className="hidden sm:flex items-center">
               {user?.role === 'admin' ? (
                 <div className="flex items-center gap-4">
                   {/* Year Display (read-only — change via Admin Settings page) */}
@@ -298,8 +300,121 @@ export default function Navigation() {
                 </div>
               )}
             </div>
+
+            {/* Mobile hamburger button */}
+            <div className="flex items-center sm:hidden">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Toggle menu"
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 cursor-pointer"
+              >
+                {mobileMenuOpen ? (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="sm:hidden border-t border-gray-200">
+            <div className="py-2 px-4 space-y-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-md text-base font-medium
+                    ${pathname === item.href
+                      ? 'bg-primary-50 text-primary-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }
+                  `}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+            {user?.role === 'admin' && (
+              <div className="border-t border-gray-200 py-2 px-4">
+                <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Admin</div>
+                <div className="space-y-1">
+                  {adminItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`block py-2 px-3 rounded-md text-base font-medium
+                        ${pathname === item.href
+                          ? 'bg-primary-50 text-primary-700'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        }
+                      `}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+                <div className="flex items-center gap-4 px-3 py-2">
+                  <span className="text-xs text-gray-500">Year: <span className="font-semibold text-gray-900">{currentYear || '...'}</span></span>
+                  <label className="flex items-center gap-1 text-xs text-gray-500">
+                    Week:
+                    <select
+                      value={currentWeek || ''}
+                      onChange={(e) => handleWeekChange(e.target.value)}
+                      disabled={isUpdating || currentWeek === null}
+                      className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold disabled:bg-gray-100"
+                    >
+                      {currentWeek === null ? (
+                        <option value="">...</option>
+                      ) : (
+                        <>
+                          <option value="Setup">Setup</option>
+                          <option value="Preseason">Pre</option>
+                          {Array.from({ length: 18 }, (_, i) => i + 1).map((w) => (
+                            <option key={w} value={w}>{w}</option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-1 text-xs text-gray-500">
+                    Day:
+                    <select
+                      value={currentDay || ''}
+                      onChange={(e) => handleDayChange(e.target.value)}
+                      disabled={isUpdating || currentDay === null}
+                      className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold disabled:bg-gray-100"
+                    >
+                      {currentDay === null ? (
+                        <option value="">...</option>
+                      ) : (
+                        Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))
+                      )}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            )}
+            {!user?.role || user.role !== 'admin' ? (
+              currentWeek !== null && (
+                <div className="border-t border-gray-200 py-2 px-7 text-sm text-gray-500">
+                  {currentYear && `${currentYear} - `}
+                  {currentWeek === 'Setup' ? 'Setup' : currentWeek === 'Preseason' ? 'Preseason' : `Week ${currentWeek}`}
+                </div>
+              )
+            ) : null}
+          </div>
+        )}
       </div>
     </nav>
   );
