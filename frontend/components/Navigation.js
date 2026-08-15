@@ -106,6 +106,7 @@ export default function Navigation() {
     navItems.push({ href: '/leagues', label: 'Leagues' });
   }
   navItems.push({ href: '/players', label: 'Player Stats' });
+  navItems.push({ href: '/rules', label: 'Rules' });
 
   // Admin menu items (separate from main nav)
   const adminItems = [
