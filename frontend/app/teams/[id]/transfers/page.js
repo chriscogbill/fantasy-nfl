@@ -672,10 +672,17 @@ export default function TransfersPage() {
                 <p className="text-primary-700 text-sm mt-1">
                   <strong>Minimum requirements:</strong> 1 QB, 3 RB, 3 WR, 1 TE, 1 K, 1 DEF
                 </p>
+                <p className="text-primary-700 text-sm mt-1">
+                  Scoring is <strong>PPR</strong> (1 point per reception) — see the{' '}
+                  <a href="/rules" className="underline font-semibold">Rules</a> for the full table.
+                </p>
               </div>
             ) : (
               <p className="text-primary-700 font-semibold text-lg">
                 {currentWeek === 'Preseason' ? 'Building Week 1 roster' : `Making transfers for Week ${transferWeek} lineup`}
+                <span className="ml-3 text-sm font-normal text-gray-500">
+                  PPR scoring — <a href="/rules" className="underline">Rules</a>
+                </span>
               </p>
             )}
           </div>
