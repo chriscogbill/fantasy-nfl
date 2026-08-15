@@ -206,7 +206,7 @@ export default function Navigation() {
                           className="fixed inset-0 z-10"
                           onClick={() => setAdminMenuOpen(false)}
                         />
-                        <div className="absolute left-0 top-full mt-0 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-20">
+                        <div className="absolute left-0 top-full mt-0 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-20">
                           <div className="py-1">
                             {adminItems.map((item) => (
                               <Link
@@ -224,6 +224,47 @@ export default function Navigation() {
                               </Link>
                             ))}
                           </div>
+                          <div className="border-t border-gray-200 px-4 py-3 space-y-2">
+                            <div className="text-xs text-gray-500">Year: <span className="font-semibold text-gray-900">{currentYear || '...'}</span></div>
+                            <label className="flex items-center justify-between text-xs text-gray-500">
+                              Week:
+                              <select
+                                value={currentWeek || ''}
+                                onChange={(e) => handleWeekChange(e.target.value)}
+                                disabled={isUpdating || currentWeek === null}
+                                className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold disabled:bg-gray-100"
+                              >
+                                {currentWeek === null ? (
+                                  <option value="">...</option>
+                                ) : (
+                                  <>
+                                    <option value="Setup">Setup</option>
+                                    <option value="Preseason">Pre</option>
+                                    {Array.from({ length: 18 }, (_, i) => i + 1).map((w) => (
+                                      <option key={w} value={w}>{w}</option>
+                                    ))}
+                                  </>
+                                )}
+                              </select>
+                            </label>
+                            <label className="flex items-center justify-between text-xs text-gray-500">
+                              Day:
+                              <select
+                                value={currentDay || ''}
+                                onChange={(e) => handleDayChange(e.target.value)}
+                                disabled={isUpdating || currentDay === null}
+                                className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold disabled:bg-gray-100"
+                              >
+                                {currentDay === null ? (
+                                  <option value="">...</option>
+                                ) : (
+                                  Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
+                                    <option key={d} value={d}>{d}</option>
+                                  ))
+                                )}
+                              </select>
+                            </label>
+                          </div>
                         </div>
                       </>
                     )}
@@ -232,72 +273,13 @@ export default function Navigation() {
               </div>
             </div>
 
-            {/* Right side - Year/Week/Day controls (desktop; on mobile these
-                live inside the burger menu so they can't collide with the logo) */}
+            {/* Right side - compact week indicator for everyone (the admin
+                Year/Week/Day selectors live inside the Admin dropdown and the
+                mobile burger; they overlapped the nav links out here) */}
             <div className="hidden sm:flex items-center">
-              {user?.role === 'admin' ? (
-                <div className="flex items-center gap-4">
-                  {/* Year Display (read-only — change via Admin Settings page) */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-gray-500">Year:</span>
-                    <span className="px-2 py-1 text-sm font-semibold text-gray-900">
-                      {currentYear || '...'}
-                    </span>
-                  </div>
-
-                  {/* Week Selector */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-gray-500">Week:</span>
-                    <select
-                      value={currentWeek || ''}
-                      onChange={(e) => handleWeekChange(e.target.value)}
-                      disabled={isUpdating || currentWeek === null}
-                      className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100"
-                    >
-                      {currentWeek === null ? (
-                        <option value="">...</option>
-                      ) : (
-                        <>
-                          <option value="Setup">Setup</option>
-                          <option value="Preseason">Pre</option>
-                          {Array.from({ length: 18 }, (_, i) => i + 1).map((w) => (
-                            <option key={w} value={w}>
-                              {w}
-                            </option>
-                          ))}
-                        </>
-                      )}
-                    </select>
-                  </div>
-
-                  {/* Day Selector */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-gray-500">Day:</span>
-                    <select
-                      value={currentDay || ''}
-                      onChange={(e) => handleDayChange(e.target.value)}
-                      disabled={isUpdating || currentDay === null}
-                      className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100"
-                    >
-                      {currentDay === null ? (
-                        <option value="">...</option>
-                      ) : (
-                        <>
-                          {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
-                            <option key={d} value={d}>
-                              {d}
-                            </option>
-                          ))}
-                        </>
-                      )}
-                    </select>
-                  </div>
-                </div>
-              ) : currentWeek !== null && (
+              {currentWeek !== null && (
                 <div className="text-sm text-gray-600">
-                  {currentYear && `${currentYear} - `}
                   {currentWeek === 'Setup' ? 'Setup' : currentWeek === 'Preseason' ? 'Preseason' : `Week ${currentWeek}`}
-                  {currentWeek !== 'Preseason' && currentWeek !== 'Setup' && currentDay && ` - Day ${currentDay}`}
                 </div>
               )}
             </div>
