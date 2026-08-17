@@ -170,7 +170,7 @@ $$;
 -- Name: get_available_players(integer, character varying, numeric, numeric, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_available_players(p_season integer DEFAULT 2024, p_position character varying DEFAULT NULL::character varying, p_min_price numeric DEFAULT NULL::numeric, p_max_price numeric DEFAULT NULL::numeric, p_search_name character varying DEFAULT NULL::character varying, p_current_week character varying DEFAULT 'Preseason') RETURNS TABLE(player_id integer, player_name character varying, player_position character varying, player_team character varying, current_price numeric, avg_points numeric, season_total numeric, prev_season_total numeric, fixture_week_1 character varying, fixture_week_2 character varying, fixture_week_3 character varying, search_rank integer)
+CREATE FUNCTION public.get_available_players(p_season integer DEFAULT 2024, p_position character varying DEFAULT NULL::character varying, p_min_price numeric DEFAULT NULL::numeric, p_max_price numeric DEFAULT NULL::numeric, p_search_name character varying DEFAULT NULL::character varying, p_current_week character varying DEFAULT 'Preseason') RETURNS TABLE(player_id integer, player_name character varying, player_position character varying, player_team character varying, current_price numeric, avg_points numeric, season_total numeric, prev_season_total numeric, fixture_week_1 character varying, fixture_week_2 character varying, fixture_week_3 character varying, search_rank integer, bye_week integer)
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -252,7 +252,15 @@ BEGIN
         WHERE f3.season = p_season AND f3.week = v_next_week_3
             AND (f3.home_team = p.team OR f3.away_team = p.team)
         LIMIT 1) as fixture_week_3,
-        p.search_rank
+        p.search_rank,
+        -- The week this player's team sits out (NULL for team-less players)
+        (SELECT w.week FROM generate_series(1, 18) AS w(week)
+         WHERE p.team IS NOT NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM nfl_fixtures fb
+             WHERE fb.season = p_season AND fb.week = w.week
+               AND (fb.home_team = p.team OR fb.away_team = p.team))
+         ORDER BY w.week LIMIT 1)::integer as bye_week
     FROM players p
     JOIN player_current_prices pcp ON p.player_id = pcp.player_id
     LEFT JOIN player_scores ps ON p.player_id = ps.player_id
@@ -365,7 +373,7 @@ $$;
 -- Name: get_lineup_with_points(integer, integer, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_lineup_with_points(p_team_id integer, p_week integer, p_season integer DEFAULT 2024) RETURNS TABLE(player_id integer, player_name character varying, player_position character varying, player_team character varying, position_slot character varying, purchase_price numeric, current_price numeric, sell_price numeric, week_points numeric, season_avg numeric, is_starter boolean, opponent character varying, season_total numeric, fixture_week_1 character varying, fixture_week_2 character varying, fixture_week_3 character varying, prev_season_total numeric)
+CREATE FUNCTION public.get_lineup_with_points(p_team_id integer, p_week integer, p_season integer DEFAULT 2024) RETURNS TABLE(player_id integer, player_name character varying, player_position character varying, player_team character varying, position_slot character varying, purchase_price numeric, current_price numeric, sell_price numeric, week_points numeric, season_avg numeric, is_starter boolean, opponent character varying, season_total numeric, fixture_week_1 character varying, fixture_week_2 character varying, fixture_week_3 character varying, prev_season_total numeric, bye_week integer)
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -420,7 +428,14 @@ BEGIN
         LIMIT 1) as fixture_week_3,
         -- Previous-season total for Preseason display (there are no
         -- current-season points before week 1)
-        pst.total_points as prev_season_total
+        pst.total_points as prev_season_total,
+        (SELECT w.week FROM generate_series(1, 18) AS w(week)
+         WHERE p.team IS NOT NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM nfl_fixtures fb
+             WHERE fb.season = p_season AND fb.week = w.week
+               AND (fb.home_team = p.team OR fb.away_team = p.team))
+         ORDER BY w.week LIMIT 1)::integer as bye_week
     FROM rosters r
     JOIN players p ON r.player_id = p.player_id
     JOIN player_current_prices pcp ON p.player_id = pcp.player_id
