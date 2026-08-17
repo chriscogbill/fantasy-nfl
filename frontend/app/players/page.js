@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import TeamLogo from '../../components/TeamLogo';
+import PlayerStatsModal from '../../components/PlayerStatsModal';
 
 export default function PlayersPage() {
   const { user, userTeamId, currentSeason } = useAuth();
@@ -22,6 +23,19 @@ export default function PlayersPage() {
   // by) instead of an all-zero "Avg Points" (Chris, 2026-07-24: the
   // page looked broken in Setup with every row at 0.0).
   const [currentWeekState, setCurrentWeekState] = useState(null);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+
+  function handleOpenStats(player, e) {
+    e.stopPropagation();
+    setSelectedPlayer(player);
+    setIsStatsModalOpen(true);
+  }
+
+  function handleCloseStats() {
+    setIsStatsModalOpen(false);
+    setSelectedPlayer(null);
+  }
   const isPreseason = currentWeekState === 'Setup' || currentWeekState === 'Preseason';
 
   useEffect(() => {
@@ -199,7 +213,16 @@ export default function PlayersPage() {
                     </td>
                   )}
                   <td className="px-4 py-4">
-                    <div className="font-semibold">{player.player_name}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-semibold">{player.player_name}</div>
+                      <button
+                        onClick={(e) => handleOpenStats(player, e)}
+                        className="text-primary-500 hover:text-primary-700 cursor-pointer"
+                        title={`View ${player.player_name}'s stats`}
+                      >
+                        ℹ️
+                      </button>
+                    </div>
                   </td>
                   <td className="px-4 py-4">
                     <span
@@ -228,6 +251,12 @@ export default function PlayersPage() {
           </div>
         </div>
       )}
+
+      <PlayerStatsModal
+        player={selectedPlayer}
+        isOpen={isStatsModalOpen}
+        onClose={handleCloseStats}
+      />
     </div>
   );
 }
