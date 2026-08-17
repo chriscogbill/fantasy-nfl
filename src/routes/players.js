@@ -40,9 +40,16 @@ router.get('/', async (req, res) => {
       ]
     );
 
+    // Total pool size regardless of limit/filters — the home page stat
+    const totalResult = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM player_current_prices WHERE season = $1`,
+      [season]
+    );
+
     res.json({
       success: true,
       count: result.rows.length,
+      total: totalResult.rows[0].total,
       players: result.rows
     });
   } catch (error) {
