@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
+import TeamLogo from '../../components/TeamLogo';
 
 export default function PlayersPage() {
   const { user, userTeamId, currentSeason } = useAuth();
@@ -209,7 +210,7 @@ export default function PlayersPage() {
                       {player.player_position}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-gray-600">{player.player_team || '-'}</td>
+                  <td className="px-4 py-4 text-gray-600"><span className="flex items-center gap-1.5"><TeamLogo team={player.player_team} /> {player.player_team || '-'}</span></td>
                   <td className="px-4 py-4 text-right">
                     <span className="font-semibold">${player.current_price}M</span>
                   </td>

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { api } from '../../../../lib/api';
 import { useAuth } from '../../../../lib/AuthContext';
 import PlayerStatsModal from '../../../../components/PlayerStatsModal';
+import TeamLogo from '../../../../components/TeamLogo';
 
 export default function TransfersPage() {
   const params = useParams();
@@ -934,7 +935,7 @@ export default function TransfersPage() {
                         <div>
                           <div className="font-semibold">{player.player_name || 'Unknown Player'}</div>
                           <div className="text-sm text-gray-600">
-                            {player.player_team || 'N/A'}
+                            <TeamLogo team={player.player_team} className="w-4 h-4" /> {player.player_team || 'N/A'}
                           </div>
                         </div>
                         <button
@@ -956,7 +957,7 @@ export default function TransfersPage() {
                         <div className="text-center w-32">
                           <div className="text-xs text-gray-500 mb-1">Next 3 Fixtures</div>
                           <div className="text-xs font-medium text-gray-700">
-                            {player.fixture_week_1 || '-'}, {player.fixture_week_2 || '-'}, {player.fixture_week_3 || '-'}
+                            {player.fixture_week_1 || 'BYE'}, {player.fixture_week_2 || 'BYE'}, {player.fixture_week_3 || 'BYE'}
                           </div>
                         </div>
                         <div className="w-8"></div>
@@ -983,7 +984,7 @@ export default function TransfersPage() {
                         <div className="text-center w-32">
                           <div className="text-xs text-gray-500 mb-1">Next 3 Fixtures</div>
                           <div className="text-xs font-medium text-gray-700">
-                            {player.fixture_week_1 || '-'}, {player.fixture_week_2 || '-'}, {player.fixture_week_3 || '-'}
+                            {player.fixture_week_1 || 'BYE'}, {player.fixture_week_2 || 'BYE'}, {player.fixture_week_3 || 'BYE'}
                           </div>
                         </div>
                         <div className="w-8"></div>
@@ -1111,7 +1112,7 @@ export default function TransfersPage() {
                     <div>
                       <div className="font-semibold">{player.player_name || 'Unknown Player'}</div>
                       <div className="text-sm text-gray-600">
-                        {player.player_team || 'N/A'}
+                        <TeamLogo team={player.player_team} className="w-4 h-4" /> {player.player_team || 'N/A'}
                       </div>
                     </div>
                     <button
@@ -1127,7 +1128,7 @@ export default function TransfersPage() {
                   <div className="text-center w-32">
                     <div className="text-xs text-gray-500 mb-1">Next 3 Fixtures</div>
                     <div className="text-xs font-medium text-gray-700">
-                      {player.fixture_week_1 || '-'}, {player.fixture_week_2 || '-'}, {player.fixture_week_3 || '-'}
+                      {player.fixture_week_1 || 'BYE'}, {player.fixture_week_2 || 'BYE'}, {player.fixture_week_3 || 'BYE'}
                     </div>
                   </div>
                   <div className="w-8"></div>
