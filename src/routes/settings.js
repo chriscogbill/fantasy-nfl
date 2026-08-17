@@ -239,16 +239,27 @@ router.post('/roll-forward-season', requireAdmin, async (req, res) => {
     // Step 1: Compute player_season_totals from player_scores (must happen while player_stats still has data)
     const totalsResult = await client.query(
       `INSERT INTO player_season_totals (player_id, season, league_format, total_points, passing_points, rushing_points, receiving_points, kicking_points, defense_points, misc_points, games_played)
-       SELECT player_id, season, league_format,
-         SUM(total_points), SUM(passing_points), SUM(rushing_points), SUM(receiving_points),
-         SUM(kicking_points), SUM(defense_points), SUM(misc_points),
-         -- Played games only: Sleeper emits zero rows for rostered inactives,
-         -- and counting them cratered injured stars' ppg (Burrow priced $4.9
-         -- off 134pts/17 "games" when he only actually played a handful)
-         COUNT(*) FILTER (WHERE total_points <> 0)
-       FROM player_scores
-       WHERE season = $1
-       GROUP BY player_id, season, league_format
+       SELECT ps.player_id, ps.season, ps.league_format,
+         SUM(ps.total_points), SUM(ps.passing_points), SUM(ps.rushing_points), SUM(ps.receiving_points),
+         SUM(ps.kicking_points), SUM(ps.defense_points), SUM(ps.misc_points),
+         -- Played games only. Inactive is NOT the same as scoring zero: a
+         -- kicker who missed his only FG attempt PLAYED (fga > 0) even at
+         -- 0.0 fantasy points, while Sleeper's all-zero rows for rostered
+         -- inactives must not count. So "played" = any non-zero stat column
+         -- (the same definition the reprice and auto-subs use); DEF counts
+         -- whenever a stats row exists (a shutout is legitimately all-zero).
+         COUNT(*) FILTER (WHERE pl.position = 'DEF' OR
+           st.passing_yards <> 0 OR st.passing_tds <> 0 OR st.interceptions <> 0 OR st.completions <> 0 OR st.attempts <> 0 OR
+           st.rushing_yards <> 0 OR st.rushing_tds <> 0 OR st.rushing_attempts <> 0 OR
+           st.receptions <> 0 OR st.receiving_yards <> 0 OR st.receiving_tds <> 0 OR st.targets <> 0 OR
+           st.fumbles_lost <> 0 OR st.two_point_conversions <> 0 OR
+           st.fg_0_19 <> 0 OR st.fg_20_29 <> 0 OR st.fg_30_39 <> 0 OR st.fg_40_49 <> 0 OR st.fg_50p <> 0 OR
+           st.xp_made <> 0 OR st.xp_missed <> 0 OR st.fga <> 0 OR st.def_td <> 0)
+       FROM player_scores ps
+       JOIN player_stats st ON st.player_id = ps.player_id AND st.week = ps.week AND st.season = ps.season
+       JOIN players pl ON pl.player_id = ps.player_id
+       WHERE ps.season = $1
+       GROUP BY ps.player_id, ps.season, ps.league_format
        ON CONFLICT (player_id, season, league_format) DO UPDATE SET
          total_points = EXCLUDED.total_points, passing_points = EXCLUDED.passing_points,
          rushing_points = EXCLUDED.rushing_points, receiving_points = EXCLUDED.receiving_points,

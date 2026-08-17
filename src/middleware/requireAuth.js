@@ -78,7 +78,16 @@ function requireTeamOwnership({ from = 'params' } = {}) {
 // good as an admin session. Humans still need admin.
 function requireAdminOrCron(req, res, next) {
   const secret = process.env.CRON_SECRET;
-  if (secret && req.get('x-cron-secret') === secret) return next();
+  const provided = req.get('x-cron-secret');
+  if (secret && provided) {
+    // Hash both sides so timingSafeEqual gets equal-length buffers and the
+    // comparison leaks no per-character timing (same hardening as
+    // cogs-uptime's proxy key check).
+    const crypto = require('crypto');
+    const a = crypto.createHash('sha256').update(provided).digest();
+    const b = crypto.createHash('sha256').update(secret).digest();
+    if (crypto.timingSafeEqual(a, b)) return next();
+  }
   return requireAdmin(req, res, next);
 }
 

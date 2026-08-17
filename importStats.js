@@ -251,7 +251,11 @@ async function importPlayers() {
         if (error.code === '23505') {
           const claimed = await pool.query(
             `UPDATE players SET sleeper_id = $1, team = $2, status = $3, search_rank = $4, age = $5
-             WHERE name = $6 AND position = $7 AND sleeper_id IS NULL`,
+             WHERE player_id = (
+               SELECT player_id FROM players
+               WHERE name = $6 AND position = $7 AND sleeper_id IS NULL
+               ORDER BY player_id LIMIT 1
+             )`,
             [player.sleeper_id, player.team, player.status, player.search_rank, player.age, player.name, player.position]
           );
           if (claimed.rowCount > 0) {

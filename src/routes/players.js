@@ -141,7 +141,7 @@ router.post('/copy-prior-year-prices', requireAdmin, async (req, res) => {
         `INSERT INTO player_current_prices (player_id, current_price, algorithm_price, season, last_updated)
          VALUES ($1, $2, $2, $3, CURRENT_TIMESTAMP)
          ON CONFLICT (player_id) DO UPDATE SET
-           current_price = $2, algorithm_price = $2, last_updated = CURRENT_TIMESTAMP`,
+           current_price = $2, algorithm_price = $2, season = $3, last_updated = CURRENT_TIMESTAMP`,
         [row.player_id, parseFloat(row.price), currentSeason]
       );
       updated++;
@@ -431,7 +431,7 @@ router.post('/save-suggested-prices', requireAdmin, async (req, res) => {
         `INSERT INTO player_current_prices (player_id, current_price, algorithm_price, season, last_updated)
          VALUES ($1, $2, $2, $3, CURRENT_TIMESTAMP)
          ON CONFLICT (player_id) DO UPDATE SET
-           current_price = $2, algorithm_price = $2, last_updated = CURRENT_TIMESTAMP`,
+           current_price = $2, algorithm_price = $2, season = $3, last_updated = CURRENT_TIMESTAMP`,
         [playerId, priceVal, currentSeason]
       );
       updated++;
