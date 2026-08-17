@@ -488,6 +488,143 @@ $$;
 
 
 --
+-- Name: player_scores_all; Type: VIEW; Schema: public; Owner: -
+-- Archive-inclusive twin of player_scores (live stats UNION the archive),
+-- used by /:id/stats for past-season reads. Definition captured from prod
+-- via pg_get_viewdef so the file is restorable end-to-end.
+--
+
+CREATE VIEW public.player_scores_all AS
+ WITH scoring_pivot AS (
+         SELECT scoring.league_format,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'passing_yard'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS passing_yard_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'passing_td'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS passing_td_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'interception'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS interception_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'rushing_yard'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS rushing_yard_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'rushing_td'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS rushing_td_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'reception'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS reception_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'receiving_yard'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS receiving_yard_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'receiving_td'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS receiving_td_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'fumble_lost'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS fumble_lost_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'two_point_conversion'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS two_point_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'fg_0_19'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS fg_0_19_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'fg_20_29'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS fg_20_29_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'fg_30_39'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS fg_30_39_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'fg_40_49'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS fg_40_49_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'fg_50p'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS fg_50p_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'kicking_xp'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS kicking_xp_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'kicking_miss'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS kicking_miss_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'defence_td'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS defence_td_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'defence_0pt'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS defence_0pt_pts,
+            max(
+                CASE
+                    WHEN scoring.scoring_type::text = 'defence_pta'::text THEN scoring.points
+                    ELSE NULL::numeric
+                END) AS defence_pta_pts
+           FROM scoring
+          GROUP BY scoring.league_format
+        )
+ SELECT ps.player_id,
+    ps.week,
+    ps.season,
+    sp.league_format,
+    round(ps.passing_yards::numeric * COALESCE(sp.passing_yard_pts, 0::numeric) + ps.passing_tds::numeric * COALESCE(sp.passing_td_pts, 0::numeric) + ps.interceptions::numeric * COALESCE(sp.interception_pts, 0::numeric) + ps.rushing_yards::numeric * COALESCE(sp.rushing_yard_pts, 0::numeric) + ps.rushing_tds::numeric * COALESCE(sp.rushing_td_pts, 0::numeric) + ps.receptions::numeric * COALESCE(sp.reception_pts, 0::numeric) + ps.receiving_yards::numeric * COALESCE(sp.receiving_yard_pts, 0::numeric) + ps.receiving_tds::numeric * COALESCE(sp.receiving_td_pts, 0::numeric) + ps.fumbles_lost::numeric * COALESCE(sp.fumble_lost_pts, 0::numeric) + ps.two_point_conversions::numeric * COALESCE(sp.two_point_pts, 0::numeric) + COALESCE(ps.fg_0_19, 0)::numeric * COALESCE(sp.fg_0_19_pts, 0::numeric) + COALESCE(ps.fg_20_29, 0)::numeric * COALESCE(sp.fg_20_29_pts, 0::numeric) + COALESCE(ps.fg_30_39, 0)::numeric * COALESCE(sp.fg_30_39_pts, 0::numeric) + COALESCE(ps.fg_40_49, 0)::numeric * COALESCE(sp.fg_40_49_pts, 0::numeric) + COALESCE(ps.fg_50p, 0)::numeric * COALESCE(sp.fg_50p_pts, 0::numeric) + COALESCE(ps.xp_made, 0)::numeric * COALESCE(sp.kicking_xp_pts, 0::numeric) + (COALESCE(ps.fga, 0) - (COALESCE(ps.fg_0_19, 0) + COALESCE(ps.fg_20_29, 0) + COALESCE(ps.fg_30_39, 0) + COALESCE(ps.fg_40_49, 0) + COALESCE(ps.fg_50p, 0)) + COALESCE(ps.xp_missed, 0))::numeric * COALESCE(sp.kicking_miss_pts, 0::numeric) +
+        CASE
+            WHEN p."position"::text = 'DEF'::text THEN COALESCE(sp.defence_0pt_pts, 0::numeric) + COALESCE(ps.def_td, 0)::numeric * COALESCE(sp.defence_td_pts, 0::numeric) + COALESCE(ps.points_allowed, 0)::numeric * COALESCE(sp.defence_pta_pts, 0::numeric)
+            ELSE 0::numeric
+        END, 2) AS total_points,
+    round(ps.passing_yards::numeric * COALESCE(sp.passing_yard_pts, 0::numeric) + ps.passing_tds::numeric * COALESCE(sp.passing_td_pts, 0::numeric) + ps.interceptions::numeric * COALESCE(sp.interception_pts, 0::numeric), 2) AS passing_points,
+    round(ps.rushing_yards::numeric * COALESCE(sp.rushing_yard_pts, 0::numeric) + ps.rushing_tds::numeric * COALESCE(sp.rushing_td_pts, 0::numeric), 2) AS rushing_points,
+    round(ps.receptions::numeric * COALESCE(sp.reception_pts, 0::numeric) + ps.receiving_yards::numeric * COALESCE(sp.receiving_yard_pts, 0::numeric) + ps.receiving_tds::numeric * COALESCE(sp.receiving_td_pts, 0::numeric), 2) AS receiving_points,
+    round(COALESCE(ps.fg_0_19, 0)::numeric * COALESCE(sp.fg_0_19_pts, 0::numeric) + COALESCE(ps.fg_20_29, 0)::numeric * COALESCE(sp.fg_20_29_pts, 0::numeric) + COALESCE(ps.fg_30_39, 0)::numeric * COALESCE(sp.fg_30_39_pts, 0::numeric) + COALESCE(ps.fg_40_49, 0)::numeric * COALESCE(sp.fg_40_49_pts, 0::numeric) + COALESCE(ps.fg_50p, 0)::numeric * COALESCE(sp.fg_50p_pts, 0::numeric) + COALESCE(ps.xp_made, 0)::numeric * COALESCE(sp.kicking_xp_pts, 0::numeric) + (COALESCE(ps.fga, 0) - (COALESCE(ps.fg_0_19, 0) + COALESCE(ps.fg_20_29, 0) + COALESCE(ps.fg_30_39, 0) + COALESCE(ps.fg_40_49, 0) + COALESCE(ps.fg_50p, 0)) + COALESCE(ps.xp_missed, 0))::numeric * COALESCE(sp.kicking_miss_pts, 0::numeric), 2) AS kicking_points,
+    round(
+        CASE
+            WHEN p."position"::text = 'DEF'::text THEN COALESCE(sp.defence_0pt_pts, 0::numeric) + COALESCE(ps.def_td, 0)::numeric * COALESCE(sp.defence_td_pts, 0::numeric) + COALESCE(ps.points_allowed, 0)::numeric * COALESCE(sp.defence_pta_pts, 0::numeric)
+            ELSE 0::numeric
+        END, 2) AS defense_points,
+    round(ps.fumbles_lost::numeric * COALESCE(sp.fumble_lost_pts, 0::numeric) + ps.two_point_conversions::numeric * COALESCE(sp.two_point_pts, 0::numeric), 2) AS misc_points
+   FROM player_stats_all ps
+     JOIN players p ON ps.player_id = p.player_id
+     CROSS JOIN scoring_pivot sp;
+
+
+--
 -- Name: get_team_league_positions(integer, integer, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
