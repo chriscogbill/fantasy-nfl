@@ -33,7 +33,7 @@ export default function Home() {
         setStats({
           teams: teamsData.count,
           leagues: leaguesData.count,
-          players: '800+', // Estimated
+          players: playersData.total ?? '—',
         });
         setSettings(settingsData);
         setCurrentWeekState(currentWeek);
