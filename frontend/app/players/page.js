@@ -7,6 +7,8 @@ import { useAuth } from '../../lib/AuthContext';
 import TeamLogo from '../../components/TeamLogo';
 import PlayerStatsModal from '../../components/PlayerStatsModal';
 
+const STORAGE_KEY = 'playersTableConfig';
+
 export default function PlayersPage() {
   const { user, userTeamId, currentSeason } = useAuth();
   const showBuyButton = user && userTeamId;
@@ -25,6 +27,42 @@ export default function PlayersPage() {
   const [currentWeekState, setCurrentWeekState] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+
+  // Configurable columns + sort, persisted in localStorage (hydrated in an
+  // effect so the server render never touches window).
+  const [visibleCols, setVisibleCols] = useState(['position', 'team', 'bye', 'price', 'points']);
+  const [sort, setSort] = useState({ key: 'price', dir: 'desc' });
+  const [columnsOpen, setColumnsOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      if (saved?.visible?.length) setVisibleCols(saved.visible);
+      if (saved?.sort?.key) setSort(saved.sort);
+    } catch (e) { /* corrupted config — keep defaults */ }
+  }, []);
+
+  function persistConfig(visible, sortCfg) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ visible, sort: sortCfg }));
+    } catch (e) { /* private mode etc. */ }
+  }
+
+  function toggleColumn(key) {
+    const next = visibleCols.includes(key)
+      ? visibleCols.filter((k) => k !== key)
+      : [...visibleCols, key];
+    setVisibleCols(next);
+    persistConfig(next, sort);
+  }
+
+  function handleSort(key, numeric) {
+    const next = sort.key === key
+      ? { key, dir: sort.dir === 'desc' ? 'asc' : 'desc' }
+      : { key, dir: numeric ? 'desc' : 'asc' };
+    setSort(next);
+    persistConfig(visibleCols, next);
+  }
 
   function handleOpenStats(player, e) {
     e.stopPropagation();
@@ -57,14 +95,103 @@ export default function PlayersPage() {
     }
   }
 
-  // Client-side filtering
-  const players = allPlayers.filter(player => {
-    if (filters.position && player.player_position !== filters.position) return false;
-    if (filters.search && !player.player_name.toLowerCase().includes(filters.search.toLowerCase())) return false;
-    if (filters.minPrice && parseFloat(player.current_price) < parseFloat(filters.minPrice)) return false;
-    if (filters.maxPrice && parseFloat(player.current_price) > parseFloat(filters.maxPrice)) return false;
-    return true;
-  });
+  const positionColors = {
+    QB: 'pos-qb',
+    RB: 'pos-rb',
+    WR: 'pos-wr',
+    TE: 'pos-te',
+    K: 'pos-k',
+    DEF: 'pos-def',
+  };
+
+  const num = (v) => (v === null || v === undefined || v === '' ? null : parseFloat(v));
+
+  // Column definitions. `sortVal` returns the comparable value (null sorts
+  // last); `numeric` picks the first-click direction (desc for numbers).
+  const COLUMN_DEFS = [
+    {
+      key: 'position', label: 'Position', align: 'text-left', numeric: false,
+      sortVal: (p) => p.player_position || '',
+      render: (p) => (
+        <span className={`px-2 py-1 text-xs font-semibold rounded ${positionColors[p.player_position] || 'bg-gray-100 text-gray-800'}`}>
+          {p.player_position}
+        </span>
+      ),
+    },
+    {
+      key: 'team', label: 'Team', align: 'text-left', numeric: false,
+      sortVal: (p) => p.player_team || null,
+      render: (p) => (
+        <span className="flex items-center gap-1.5 whitespace-nowrap text-gray-600">
+          <TeamLogo team={p.player_team} className="w-4 h-4 shrink-0" /> {p.player_team || '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'bye', label: 'Bye', align: 'text-center', numeric: true,
+      sortVal: (p) => p.bye_week ?? null,
+      render: (p) => <span className="text-gray-600">{p.bye_week ? `W${p.bye_week}` : '-'}</span>,
+    },
+    {
+      key: 'price', label: 'Price', align: 'text-right', numeric: true,
+      sortVal: (p) => num(p.current_price),
+      render: (p) => <span className="font-semibold">${p.current_price}M</span>,
+    },
+    {
+      key: 'points',
+      label: isPreseason ? `${currentSeason - 1} Pts` : 'Avg Points',
+      align: 'text-right', numeric: true,
+      sortVal: (p) => (isPreseason ? num(p.prev_season_total) : num(p.avg_points)),
+      render: (p) => (
+        <span className="font-bold text-primary-600">
+          {isPreseason
+            ? (p.prev_season_total ? parseFloat(p.prev_season_total).toFixed(1) : '-')
+            : (p.avg_points ? parseFloat(p.avg_points).toFixed(1) : '-')}
+        </span>
+      ),
+    },
+    {
+      key: 'seasonTotal', label: 'Season Pts', align: 'text-right', numeric: true,
+      sortVal: (p) => num(p.season_total),
+      render: (p) => <span className="text-gray-700">{p.season_total ? parseFloat(p.season_total).toFixed(1) : '-'}</span>,
+    },
+    {
+      key: 'fixtures', label: 'Next 3', align: 'text-left', numeric: false, sortable: false,
+      sortVal: () => null,
+      render: (p) => (
+        <span className="text-xs text-gray-600 whitespace-nowrap">
+          {p.fixture_week_1 || 'BYE'}, {p.fixture_week_2 || 'BYE'}, {p.fixture_week_3 || 'BYE'}
+        </span>
+      ),
+    },
+  ];
+
+  const activeCols = COLUMN_DEFS.filter((c) => visibleCols.includes(c.key));
+  const sortCol = COLUMN_DEFS.find((c) => c.key === sort.key);
+
+  // Client-side filtering + sorting
+  const players = allPlayers
+    .filter((player) => {
+      if (filters.position && player.player_position !== filters.position) return false;
+      if (filters.search && !player.player_name.toLowerCase().includes(filters.search.toLowerCase())) return false;
+      if (filters.minPrice && parseFloat(player.current_price) < parseFloat(filters.minPrice)) return false;
+      if (filters.maxPrice && parseFloat(player.current_price) > parseFloat(filters.maxPrice)) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sort.key === 'name') {
+        const cmp = a.player_name.localeCompare(b.player_name);
+        return sort.dir === 'asc' ? cmp : -cmp;
+      }
+      if (!sortCol) return 0;
+      const av = sortCol.sortVal(a);
+      const bv = sortCol.sortVal(b);
+      if (av === null && bv === null) return 0;
+      if (av === null) return 1; // nulls last either direction
+      if (bv === null) return -1;
+      const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
+      return sort.dir === 'asc' ? cmp : -cmp;
+    });
 
   function handleFilterChange(key, value) {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -79,22 +206,40 @@ export default function PlayersPage() {
     });
   }
 
-  const positionColors = {
-    QB: 'pos-qb',
-    RB: 'pos-rb',
-    WR: 'pos-wr',
-    TE: 'pos-te',
-    K: 'pos-k',
-    DEF: 'pos-def',
-  };
+  const sortIndicator = (key) => sort.key === key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : '';
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Player Search</h1>
-        <button onClick={clearFilters} className="btn-secondary">
-          Clear Filters
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Column picker */}
+          <div className="relative">
+            <button onClick={() => setColumnsOpen(!columnsOpen)} className="btn-secondary">
+              Columns
+            </button>
+            {columnsOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setColumnsOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-md shadow-lg border border-gray-200 z-20 py-2 px-3 space-y-1.5">
+                  {COLUMN_DEFS.map((c) => (
+                    <label key={c.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.includes(c.key)}
+                        onChange={() => toggleColumn(c.key)}
+                      />
+                      {c.key === 'points' ? (isPreseason ? `${currentSeason - 1} Pts` : 'Avg Points') : c.label}
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <button onClick={clearFilters} className="btn-secondary">
+            Clear Filters
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -187,14 +332,22 @@ export default function PlayersPage() {
             <thead className="bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10">
               <tr>
                 {showBuyButton && <th className="px-2 py-3 w-10"></th>}
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Player</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Position</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Team</th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-600">Bye</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600">Price</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600">
-                  {isPreseason ? `${currentSeason - 1} Pts` : 'Avg Points'}
+                <th
+                  className="px-4 py-3 text-left text-sm font-semibold text-gray-600 cursor-pointer select-none hover:text-gray-900"
+                  onClick={() => handleSort('name', false)}
+                >
+                  Player{sortIndicator('name')}
                 </th>
+                {activeCols.map((c) => (
+                  <th
+                    key={c.key}
+                    className={`px-4 py-3 ${c.align} text-sm font-semibold text-gray-600 ${c.sortable === false ? '' : 'cursor-pointer select-none hover:text-gray-900'}`}
+                    onClick={c.sortable === false ? undefined : () => handleSort(c.key, c.numeric)}
+                  >
+                    {c.key === 'points' ? (isPreseason ? `${currentSeason - 1} Pts` : 'Avg Points') : c.label}
+                    {c.sortable === false ? '' : sortIndicator(c.key)}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -225,29 +378,11 @@ export default function PlayersPage() {
                       </button>
                     </div>
                   </td>
-                  <td className="px-4 py-4">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded ${
-                        positionColors[player.player_position] || 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {player.player_position}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-gray-600"><span className="flex items-center gap-1.5 whitespace-nowrap"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || '-'}</span></td>
-                  <td className="px-4 py-4 text-center text-gray-600">
-                    {player.bye_week ? `W${player.bye_week}` : '-'}
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <span className="font-semibold">${player.current_price}M</span>
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <span className="font-bold text-primary-600">
-                      {isPreseason
-                        ? (player.prev_season_total ? parseFloat(player.prev_season_total).toFixed(1) : '-')
-                        : (player.avg_points ? parseFloat(player.avg_points).toFixed(1) : '-')}
-                    </span>
-                  </td>
+                  {activeCols.map((c) => (
+                    <td key={c.key} className={`px-4 py-4 ${c.align}`}>
+                      {c.render(player)}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
