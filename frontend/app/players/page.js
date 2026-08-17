@@ -210,7 +210,7 @@ export default function PlayersPage() {
                       {player.player_position}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-gray-600"><span className="flex items-center gap-1.5"><TeamLogo team={player.player_team} /> {player.player_team || '-'}</span></td>
+                  <td className="px-4 py-4 text-gray-600"><span className="flex items-center gap-1.5 whitespace-nowrap"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || '-'}</span></td>
                   <td className="px-4 py-4 text-right">
                     <span className="font-semibold">${player.current_price}M</span>
                   </td>

@@ -426,7 +426,7 @@ export default function LineupPage() {
                           <div>
                             <div className="font-semibold">{player.player_name}</div>
                             <div className="text-sm opacity-75">
-                              {player.player_position} • <TeamLogo team={player.player_team} className="w-4 h-4" /> {player.player_team || 'N/A'}
+                              {player.player_position} • <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || 'N/A'}</span>
                               {player.opponent && (
                                 <span className="ml-2 font-semibold text-primary-700">
                                   vs {player.opponent}
@@ -535,7 +535,7 @@ export default function LineupPage() {
                       <div>
                         <div className="font-semibold">{player.player_name}</div>
                         <div className="text-sm text-gray-600">
-                          <TeamLogo team={player.player_team} className="w-4 h-4" /> {player.player_team || 'N/A'}
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || 'N/A'}</span>
                           {player.opponent && (
                             <span className="ml-2 font-semibold text-primary-700">
                               vs {player.opponent}
