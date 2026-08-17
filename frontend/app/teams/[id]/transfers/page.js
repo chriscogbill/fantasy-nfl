@@ -935,7 +935,7 @@ export default function TransfersPage() {
                         <div>
                           <div className="font-semibold">{player.player_name || 'Unknown Player'}</div>
                           <div className="text-sm text-gray-600">
-                            <TeamLogo team={player.player_team} className="w-4 h-4" /> {player.player_team || 'N/A'}
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || 'N/A'}</span>
                           </div>
                         </div>
                         <button
@@ -1112,7 +1112,7 @@ export default function TransfersPage() {
                     <div>
                       <div className="font-semibold">{player.player_name || 'Unknown Player'}</div>
                       <div className="text-sm text-gray-600">
-                        <TeamLogo team={player.player_team} className="w-4 h-4" /> {player.player_team || 'N/A'}
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || 'N/A'}</span>
                       </div>
                     </div>
                     <button
