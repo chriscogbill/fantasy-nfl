@@ -264,11 +264,11 @@ export default function PlayerStatsModal({ player, isOpen, onClose }) {
                   {stats.map((stat) => {
                     const isFuture = stat.is_future === true;
                     const isBye = stat.opponent === 'BYE';
-                    const rowBgClass = isBye ? 'bg-danger-50' : (isFuture ? 'bg-link-50' : 'bg-white');
+                    const rowBgClass = isBye ? 'bg-gray-200' : (isFuture ? 'bg-link-50' : 'bg-white');
                     const stickyBgClass = rowBgClass;
 
                     return (
-                      <tr key={stat.week} className={`hover:bg-gray-100 ${rowBgClass}`}>
+                      <tr key={stat.week} className={`${isBye ? '' : 'hover:bg-gray-100'} ${rowBgClass}`}>
                         <td className={`px-3 py-2 text-sm font-medium sticky left-0 ${stickyBgClass} ${isFuture ? 'text-gray-500' : 'text-gray-900'}`}>
                           Week {stat.week}
                         </td>

@@ -25,6 +25,7 @@ export default function PlayersPage() {
   // by) instead of an all-zero "Avg Points" (Chris, 2026-07-24: the
   // page looked broken in Setup with every row at 0.0).
   const [currentWeekState, setCurrentWeekState] = useState(null);
+  const [statTotals, setStatTotals] = useState({});
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
 
@@ -79,7 +80,19 @@ export default function PlayersPage() {
   useEffect(() => {
     fetchPlayers();
     api.getCurrentWeek()
-      .then((w) => setCurrentWeekState(w ?? null))
+      .then((w) => {
+        setCurrentWeekState(w ?? null);
+        // Raw stat columns read last season during Setup/Preseason (no
+        // current-season games yet), the live season otherwise.
+        const statSeason = (w === 'Setup' || w === 'Preseason') ? currentSeason - 1 : currentSeason;
+        api.getSeasonStatTotals(statSeason)
+          .then((d) => {
+            const map = {};
+            for (const row of d.stats || []) map[row.player_id] = row;
+            setStatTotals(map);
+          })
+          .catch(() => setStatTotals({}));
+      })
       .catch(() => setCurrentWeekState(null));
   }, [currentSeason]);
 
@@ -128,9 +141,9 @@ export default function PlayersPage() {
       ),
     },
     {
-      key: 'bye', label: 'Bye', align: 'text-center', numeric: true,
+      key: 'bye', label: 'BYE week', align: 'text-center', numeric: true,
       sortVal: (p) => p.bye_week ?? null,
-      render: (p) => <span className="text-gray-600">{p.bye_week ? `W${p.bye_week}` : '-'}</span>,
+      render: (p) => <span className="text-gray-600">{p.bye_week ?? '-'}</span>,
     },
     {
       key: 'price', label: 'Price', align: 'text-right', numeric: true,
@@ -164,6 +177,29 @@ export default function PlayersPage() {
         </span>
       ),
     },
+    // Raw season stat columns (previous season during Preseason). All
+    // default-hidden — enable via the Columns picker.
+    ...[
+      ['receptions', 'Receptions'],
+      ['targets', 'Targets'],
+      ['receiving_yards', 'Rec Yds'],
+      ['receiving_tds', 'Rec TDs'],
+      ['rushing_yards', 'Rush Yds'],
+      ['rushing_tds', 'Rush TDs'],
+      ['passing_yards', 'Pass Yds'],
+      ['passing_tds', 'Pass TDs'],
+      ['interceptions', 'INTs'],
+      ['fg_made', 'FGs'],
+      ['xp_made', 'XPs'],
+      ['def_tds', 'DEF TDs'],
+    ].map(([field, label]) => ({
+      key: field, label, align: 'text-right', numeric: true,
+      sortVal: (p) => statTotals[p.player_id]?.[field] ?? null,
+      render: (p) => {
+        const v = statTotals[p.player_id]?.[field];
+        return <span className="text-gray-700">{v ?? '-'}</span>;
+      },
+    })),
   ];
 
   const activeCols = COLUMN_DEFS.filter((c) => visibleCols.includes(c.key));
@@ -212,34 +248,9 @@ export default function PlayersPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Player Search</h1>
-        <div className="flex items-center gap-2">
-          {/* Column picker */}
-          <div className="relative">
-            <button onClick={() => setColumnsOpen(!columnsOpen)} className="btn-secondary">
-              Columns
-            </button>
-            {columnsOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setColumnsOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-md shadow-lg border border-gray-200 z-20 py-2 px-3 space-y-1.5">
-                  {COLUMN_DEFS.map((c) => (
-                    <label key={c.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={visibleCols.includes(c.key)}
-                        onChange={() => toggleColumn(c.key)}
-                      />
-                      {c.key === 'points' ? (isPreseason ? `${currentSeason - 1} Pts` : 'Avg Points') : c.label}
-                    </label>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-          <button onClick={clearFilters} className="btn-secondary">
-            Clear Filters
-          </button>
-        </div>
+        <button onClick={clearFilters} className="btn-secondary">
+          Clear Filters
+        </button>
       </div>
 
       {/* Filters */}
@@ -326,7 +337,25 @@ export default function PlayersPage() {
           No players found. Try adjusting your filters.
         </div>
       ) : (
-        <div className="card overflow-x-auto">
+        <div className="card relative">
+          {columnsOpen && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setColumnsOpen(false)} />
+              <div className="absolute right-2 top-12 w-44 bg-white rounded-md shadow-lg border border-gray-200 z-30 py-2 px-3 space-y-1.5">
+                {COLUMN_DEFS.map((c) => (
+                  <label key={c.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={visibleCols.includes(c.key)}
+                      onChange={() => toggleColumn(c.key)}
+                    />
+                    {c.key === 'points' ? (isPreseason ? `${currentSeason - 1} Pts` : 'Avg Points') : c.label}
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+          <div className="overflow-x-auto">
           <div className="max-h-[600px] overflow-y-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10">
@@ -348,6 +377,19 @@ export default function PlayersPage() {
                     {c.sortable === false ? '' : sortIndicator(c.key)}
                   </th>
                 ))}
+                <th className="px-2 py-3 w-10 text-right">
+                  <button
+                    onClick={() => setColumnsOpen(!columnsOpen)}
+                    className="text-gray-400 hover:text-gray-700 cursor-pointer align-middle"
+                    title="Choose columns"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                      <rect x="3.5" y="4" width="4.6" height="16" rx="1" />
+                      <rect x="9.7" y="4" width="4.6" height="16" rx="1" />
+                      <rect x="15.9" y="4" width="4.6" height="16" rx="1" />
+                    </svg>
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -383,10 +425,12 @@ export default function PlayersPage() {
                       {c.render(player)}
                     </td>
                   ))}
+                  <td className="px-2 py-4"></td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
           </div>
         </div>
       )}
