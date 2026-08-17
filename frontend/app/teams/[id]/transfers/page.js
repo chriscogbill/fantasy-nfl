@@ -1143,6 +1143,10 @@ export default function TransfersPage() {
                   <div className="w-8"></div>
                   <div className="w-20"></div>
                   <div className="w-20"></div>
+                  <div className="text-center w-12">
+                    <div className="text-xs text-gray-500 mb-1">Bye</div>
+                    <div className="text-sm text-gray-700">{player.bye_week ? `W${player.bye_week}` : '-'}</div>
+                  </div>
                   <div className="text-center w-20">
                     <div className="text-xs text-gray-500 mb-1">Price</div>
                     <div className="text-sm font-semibold text-gray-700">

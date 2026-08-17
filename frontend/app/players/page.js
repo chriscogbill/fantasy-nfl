@@ -190,6 +190,7 @@ export default function PlayersPage() {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Player</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Position</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Team</th>
+                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-600">Bye</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600">Price</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600">
                   {isPreseason ? `${currentSeason - 1} Pts` : 'Avg Points'}
@@ -234,6 +235,9 @@ export default function PlayersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-4 text-gray-600"><span className="flex items-center gap-1.5 whitespace-nowrap"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || '-'}</span></td>
+                  <td className="px-4 py-4 text-center text-gray-600">
+                    {player.bye_week ? `W${player.bye_week}` : '-'}
+                  </td>
                   <td className="px-4 py-4 text-right">
                     <span className="font-semibold">${player.current_price}M</span>
                   </td>
