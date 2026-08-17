@@ -285,6 +285,10 @@ class ApiClient {
   }
 
   // Scoring Rules
+  async getSeasonStatTotals(season) {
+    return this.request(`/api/players/season-stat-totals?season=${season}`);
+  }
+
   async getScoringRules() {
     return this.request('/api/scoring');
   }

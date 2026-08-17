@@ -59,6 +59,42 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/players/previous-season-prices - Get player prices from the previous season
+// GET /api/players/season-stat-totals?season=YYYY - Per-player raw stat
+// aggregates for a season (receptions, rushing TDs, ...). Reads the
+// archive-inclusive player_stats_all view so it works for the previous
+// season during Preseason and for the live season in-season. Public —
+// feeds the configurable columns on the Player Search page.
+router.get('/season-stat-totals', async (req, res) => {
+  try {
+    const season = req.query.season ? parseInt(req.query.season) : await getCurrentSeason(pool);
+    const result = await pool.query(
+      `SELECT player_id,
+              SUM(receptions)::int AS receptions,
+              SUM(targets)::int AS targets,
+              SUM(receiving_yards)::int AS receiving_yards,
+              SUM(receiving_tds)::int AS receiving_tds,
+              SUM(rushing_yards)::int AS rushing_yards,
+              SUM(rushing_tds)::int AS rushing_tds,
+              SUM(rushing_attempts)::int AS rushing_attempts,
+              SUM(passing_yards)::int AS passing_yards,
+              SUM(passing_tds)::int AS passing_tds,
+              SUM(interceptions)::int AS interceptions,
+              SUM(fg_0_19 + fg_20_29 + fg_30_39 + fg_40_49 + fg_50p)::int AS fg_made,
+              SUM(fga)::int AS fg_attempts,
+              SUM(xp_made)::int AS xp_made,
+              SUM(def_td)::int AS def_tds
+       FROM player_stats_all
+       WHERE season = $1
+       GROUP BY player_id`,
+      [season]
+    );
+    res.json({ success: true, season, count: result.rows.length, stats: result.rows });
+  } catch (error) {
+    console.error('Error fetching season stat totals:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get('/previous-season-prices', requireAdmin, async (req, res) => {
   try {
     const currentSeason = await getCurrentSeason(pool);
