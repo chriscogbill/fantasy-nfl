@@ -9,6 +9,21 @@ import PlayerStatsModal from '../../components/PlayerStatsModal';
 
 const STORAGE_KEY = 'playersTableConfig';
 
+const STAT_FIELDS = [
+  ['receptions', 'Receptions'],
+  ['targets', 'Targets'],
+  ['receiving_yards', 'Rec Yds'],
+  ['receiving_tds', 'Rec TDs'],
+  ['rushing_yards', 'Rush Yds'],
+  ['rushing_tds', 'Rush TDs'],
+  ['passing_yards', 'Pass Yds'],
+  ['passing_tds', 'Pass TDs'],
+  ['interceptions', 'INTs'],
+  ['fg_made', 'FGs'],
+  ['xp_made', 'XPs'],
+  ['def_tds', 'DEF TDs'],
+];
+
 export default function PlayersPage() {
   const { user, userTeamId, currentSeason } = useAuth();
   const showBuyButton = user && userTeamId;
@@ -25,7 +40,8 @@ export default function PlayersPage() {
   // by) instead of an all-zero "Avg Points" (Chris, 2026-07-24: the
   // page looked broken in Setup with every row at 0.0).
   const [currentWeekState, setCurrentWeekState] = useState(null);
-  const [statTotals, setStatTotals] = useState({});
+  const [statTotalsPrev, setStatTotalsPrev] = useState({});
+  const [statTotalsCur, setStatTotalsCur] = useState({});
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
 
@@ -82,16 +98,23 @@ export default function PlayersPage() {
     api.getCurrentWeek()
       .then((w) => {
         setCurrentWeekState(w ?? null);
-        // Raw stat columns read last season during Setup/Preseason (no
-        // current-season games yet), the live season otherwise.
-        const statSeason = (w === 'Setup' || w === 'Preseason') ? currentSeason - 1 : currentSeason;
-        api.getSeasonStatTotals(statSeason)
-          .then((d) => {
-            const map = {};
-            for (const row of d.stats || []) map[row.player_id] = row;
-            setStatTotals(map);
-          })
-          .catch(() => setStatTotals({}));
+        // Raw stat columns come in two season flavours: last season is
+        // always available (the transfer-decision reference), the live
+        // season's columns join once games start (Chris, 2026-08-17:
+        // auto-switching would lose the prior-year signal in week 1).
+        const toMap = (d) => {
+          const map = {};
+          for (const row of d.stats || []) map[row.player_id] = row;
+          return map;
+        };
+        api.getSeasonStatTotals(currentSeason - 1)
+          .then((d) => setStatTotalsPrev(toMap(d)))
+          .catch(() => setStatTotalsPrev({}));
+        if (w !== 'Setup' && w !== 'Preseason') {
+          api.getSeasonStatTotals(currentSeason)
+            .then((d) => setStatTotalsCur(toMap(d)))
+            .catch(() => setStatTotalsCur({}));
+        }
       })
       .catch(() => setCurrentWeekState(null));
   }, [currentSeason]);
@@ -177,29 +200,26 @@ export default function PlayersPage() {
         </span>
       ),
     },
-    // Raw season stat columns (previous season during Preseason). All
-    // default-hidden — enable via the Columns picker.
-    ...[
-      ['receptions', 'Receptions'],
-      ['targets', 'Targets'],
-      ['receiving_yards', 'Rec Yds'],
-      ['receiving_tds', 'Rec TDs'],
-      ['rushing_yards', 'Rush Yds'],
-      ['rushing_tds', 'Rush TDs'],
-      ['passing_yards', 'Pass Yds'],
-      ['passing_tds', 'Pass TDs'],
-      ['interceptions', 'INTs'],
-      ['fg_made', 'FGs'],
-      ['xp_made', 'XPs'],
-      ['def_tds', 'DEF TDs'],
-    ].map(([field, label]) => ({
-      key: field, label, align: 'text-right', numeric: true,
-      sortVal: (p) => statTotals[p.player_id]?.[field] ?? null,
+    // Raw season stat columns, one set per season: previous year always
+    // (the reference for transfer decisions), current year once games
+    // start. All default-hidden — enable via the Columns picker. Keys are
+    // season-relative (prev_/cur_) so saved preferences survive rolls.
+    ...STAT_FIELDS.map(([field, label]) => ({
+      key: `prev_${field}`, label: `${currentSeason - 1} ${label}`, align: 'text-right', numeric: true,
+      sortVal: (p) => statTotalsPrev[p.player_id]?.[field] ?? null,
       render: (p) => {
-        const v = statTotals[p.player_id]?.[field];
+        const v = statTotalsPrev[p.player_id]?.[field];
         return <span className="text-gray-700">{v ?? '-'}</span>;
       },
     })),
+    ...(isPreseason ? [] : STAT_FIELDS.map(([field, label]) => ({
+      key: `cur_${field}`, label: `${currentSeason} ${label}`, align: 'text-right', numeric: true,
+      sortVal: (p) => statTotalsCur[p.player_id]?.[field] ?? null,
+      render: (p) => {
+        const v = statTotalsCur[p.player_id]?.[field];
+        return <span className="text-gray-700">{v ?? '-'}</span>;
+      },
+    }))),
   ];
 
   const activeCols = COLUMN_DEFS.filter((c) => visibleCols.includes(c.key));
