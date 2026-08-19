@@ -272,7 +272,7 @@ export default function PlayerStatsModal({ player, isOpen, onClose }) {
                         <td className={`px-3 py-2 text-sm font-medium sticky left-0 ${stickyBgClass} ${isFuture ? 'text-gray-500' : 'text-gray-900'}`}>
                           Week {stat.week}
                         </td>
-                        <td className={`px-3 py-2 text-sm ${isBye ? 'text-danger-600 font-semibold' : isFuture ? 'text-gray-500' : 'text-gray-900'}`}>
+                        <td className={`px-3 py-2 text-sm ${isBye ? 'text-gray-700 font-semibold' : isFuture ? 'text-gray-500' : 'text-gray-900'}`}>
                           {stat.opponent || '-'}
                         </td>
                         <td className={`px-3 py-2 text-sm font-bold ${isFuture ? 'text-gray-400' : 'text-primary-600'}`}>
