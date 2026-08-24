@@ -13,7 +13,7 @@
        ring — the ring is reserved for motifs that ARE circular. -->
   <circle cx="549" cy="316" r="118" fill="#ffffff"/>
   <g transform="rotate(-35 549 316)">
-    <path d="M437,316 C447,266 490,244 549,244 C608,244 651,266 661,316 C651,366 608,388 549,388 C490,388 447,366 437,316 Z" fill="#1a1a1a"/>
+    <path d="M437,316 C457,278 490,244 549,244 C608,244 641,278 661,316 C641,354 608,388 549,388 C490,388 457,354 437,316 Z" fill="#1a1a1a"/>
     <g stroke="#ffffff" stroke-width="9" stroke-linecap="round">
       <line x1="505" y1="316" x2="593" y2="316"/>
       <line x1="527" y1="294" x2="527" y2="338"/>
