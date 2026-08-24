@@ -7,18 +7,18 @@
           style="fill:#1a1a1a;stroke:#1a1a1a;stroke-width:9.7px;"/>
   </g>
   <!-- fantasy-nfl motif: an american football, diagonal bottom-left to top-right
-       (black & white). Blunt-tipped lens (cubics, not a pointed quadratic). The
-       shared cog frame is identical across cogs.tech apps; only the centre differs.
-       No containing ring — the ring is reserved for motifs that ARE circular. -->
+       (black & white). Blunt-tipped lens (cubics, not a pointed quadratic),
+       sized to run nearly rim to rim of the cog's hollow. The shared cog frame
+       is identical across cogs.tech apps; only the centre differs. No containing
+       ring — the ring is reserved for motifs that ARE circular. -->
   <circle cx="549" cy="316" r="118" fill="#ffffff"/>
   <g transform="rotate(-35 549 316)">
-    <path d="M447,316 C457,277 500,261 549,261 C598,261 641,277 651,316 C641,355 598,371 549,371 C500,371 457,355 447,316 Z" fill="#1a1a1a"/>
+    <path d="M437,316 C447,272 490,252 549,252 C608,252 651,272 661,316 C651,360 608,380 549,380 C490,380 447,360 437,316 Z" fill="#1a1a1a"/>
     <g stroke="#ffffff" stroke-width="9" stroke-linecap="round">
-      <line x1="507" y1="316" x2="591" y2="316"/>
-      <line x1="518" y1="300" x2="518" y2="332"/>
-      <line x1="539" y1="300" x2="539" y2="332"/>
-      <line x1="559" y1="300" x2="559" y2="332"/>
-      <line x1="580" y1="300" x2="580" y2="332"/>
+      <line x1="505" y1="316" x2="593" y2="316"/>
+      <line x1="527" y1="298" x2="527" y2="334"/>
+      <line x1="549" y1="298" x2="549" y2="334"/>
+      <line x1="571" y1="298" x2="571" y2="334"/>
     </g>
   </g>
 </svg>
