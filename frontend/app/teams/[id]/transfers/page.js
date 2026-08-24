@@ -659,9 +659,9 @@ export default function TransfersPage() {
       )}
 
       <div className="card">
-        <div className="flex justify-between items-start mb-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start mb-4">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">
               {roster.length === 0 ? 'Build Your Roster' : 'Transfers'} - {team.team_name}
             </h1>
             {roster.length === 0 ? (
@@ -688,7 +688,7 @@ export default function TransfersPage() {
             )}
           </div>
 
-          <div className="flex flex-col gap-2 ml-6">
+          <div className="flex flex-col gap-2 sm:ml-6">
             <div className="flex items-center gap-2 justify-end">
               <div className="text-xs text-gray-600 whitespace-nowrap text-right w-28">Team Value:</div>
               <div className="bg-white border border-gray-200 rounded-lg px-3 py-1">
@@ -923,7 +923,7 @@ export default function TransfersPage() {
                           : 'bg-gray-50 border-gray-200 hover:border-red-300 hover:bg-red-50'
                     }`}
                   >
-                    <div className="flex items-center gap-3 flex-1">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
                       <span
                         className={`px-3 py-1 text-sm font-semibold rounded ${
                           positionColors[player.player_position] || 'bg-gray-100'
@@ -931,9 +931,9 @@ export default function TransfersPage() {
                       >
                         {player.player_position}
                       </span>
-                      <div className="flex-1 flex items-center gap-2">
-                        <div>
-                          <div className="font-semibold">{player.player_name || 'Unknown Player'}</div>
+                      <div className="flex-1 flex items-center gap-2 min-w-0">
+                        <div className="min-w-0">
+                          <div className="font-semibold truncate">{player.player_name || 'Unknown Player'}</div>
                           <div className="text-sm text-gray-600">
                             <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || 'N/A'}</span>
                           </div>
@@ -953,14 +953,14 @@ export default function TransfersPage() {
                       )}
                     </div>
                     {isIncoming ? (
-                      <div className="flex gap-3 items-center">
-                        <div className="text-center w-32">
+                      <div className="flex gap-2 sm:gap-3 items-center shrink-0">
+                        <div className="hidden md:block text-center w-32">
                           <div className="text-xs text-gray-500 mb-1">Next 3 Fixtures</div>
                           <div className="text-xs font-medium text-gray-700">
                             {player.fixture_week_1 || 'BYE'}, {player.fixture_week_2 || 'BYE'}, {player.fixture_week_3 || 'BYE'}
                           </div>
                         </div>
-                        <div className="w-8"></div>
+                        <div className="hidden md:block w-8"></div>
                         <div className="text-center w-16">
                           <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${currentSeason - 1} Pts` : 'Total Pts'}</div>
                           <div className="text-sm font-semibold text-gray-700">
@@ -969,9 +969,9 @@ export default function TransfersPage() {
                               : (player.season_total ? parseFloat(player.season_total).toFixed(1) : '-')}
                           </div>
                         </div>
-                        <div className="w-8"></div>
-                        <div className="w-20"></div>
-                        <div className="w-20"></div>
+                        <div className="hidden md:block w-8"></div>
+                        <div className="hidden md:block w-20"></div>
+                        <div className="hidden md:block w-20"></div>
                         <div className="text-center w-20">
                           <div className="text-xs text-gray-500 mb-1">Price</div>
                           <div className="text-sm font-semibold text-gray-700">
@@ -980,14 +980,14 @@ export default function TransfersPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex gap-3 items-center">
-                        <div className="text-center w-32">
+                      <div className="flex gap-2 sm:gap-3 items-center shrink-0">
+                        <div className="hidden md:block text-center w-32">
                           <div className="text-xs text-gray-500 mb-1">Next 3 Fixtures</div>
                           <div className="text-xs font-medium text-gray-700">
                             {player.fixture_week_1 || 'BYE'}, {player.fixture_week_2 || 'BYE'}, {player.fixture_week_3 || 'BYE'}
                           </div>
                         </div>
-                        <div className="w-8"></div>
+                        <div className="hidden md:block w-8"></div>
                         <div className="text-center w-16">
                           <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${currentSeason - 1} Pts` : 'Total Pts'}</div>
                           <div className="text-sm font-semibold text-gray-700">
@@ -996,14 +996,14 @@ export default function TransfersPage() {
                               : (player.season_total ? parseFloat(player.season_total).toFixed(1) : '-')}
                           </div>
                         </div>
-                        <div className="w-8"></div>
-                        <div className="text-center w-20">
+                        <div className="hidden md:block w-8"></div>
+                        <div className="hidden sm:block text-center w-20">
                           <div className="text-xs text-gray-500 mb-1">Purchase</div>
                           <div className="text-sm font-semibold text-gray-700">
                             ${parseFloat(player.purchase_price || player.current_price).toFixed(1)}M
                           </div>
                         </div>
-                        <div className="text-center w-20">
+                        <div className="hidden sm:block text-center w-20">
                           <div className="text-xs text-gray-500 mb-1">Current</div>
                           <div className="text-sm font-semibold text-gray-700">
                             ${parseFloat(player.current_price).toFixed(1)}M
@@ -1100,7 +1100,7 @@ export default function TransfersPage() {
                     : 'bg-gray-50 border-gray-200 hover:border-green-300 hover:bg-green-50'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <span
                     className={`px-3 py-1 text-sm font-semibold rounded ${
                       positionColors[player.player_position] || 'bg-gray-100'
@@ -1109,8 +1109,8 @@ export default function TransfersPage() {
                     {player.player_position}
                   </span>
                   <div className="flex items-center gap-2">
-                    <div>
-                      <div className="font-semibold">{player.player_name || 'Unknown Player'}</div>
+                    <div className="min-w-0">
+                      <div className="font-semibold truncate">{player.player_name || 'Unknown Player'}</div>
                       <div className="text-sm text-gray-600">
                         <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || 'N/A'}</span>
                       </div>
@@ -1124,14 +1124,14 @@ export default function TransfersPage() {
                     </button>
                   </div>
                 </div>
-                <div className="flex gap-3 items-center">
-                  <div className="text-center w-32">
+                <div className="flex gap-2 sm:gap-3 items-center shrink-0">
+                  <div className="hidden md:block text-center w-32">
                     <div className="text-xs text-gray-500 mb-1">Next 3 Fixtures</div>
                     <div className="text-xs font-medium text-gray-700">
                       {player.fixture_week_1 || 'BYE'}, {player.fixture_week_2 || 'BYE'}, {player.fixture_week_3 || 'BYE'}
                     </div>
                   </div>
-                  <div className="w-8"></div>
+                  <div className="hidden md:block w-8"></div>
                   <div className="text-center w-16">
                     <div className="text-xs text-gray-500 mb-1">{currentWeek === 'Preseason' ? `${currentSeason - 1} Pts` : 'Total Pts'}</div>
                     <div className="text-sm font-semibold text-gray-700">
@@ -1140,9 +1140,9 @@ export default function TransfersPage() {
                         : (player.season_total ? parseFloat(player.season_total).toFixed(1) : '-')}
                     </div>
                   </div>
-                  <div className="w-8"></div>
-                  <div className="w-20"></div>
-                  <div className="w-20"></div>
+                  <div className="hidden md:block w-8"></div>
+                  <div className="hidden md:block w-20"></div>
+                  <div className="hidden md:block w-20"></div>
                   <div className="text-center w-14">
                     <div className="text-xs text-gray-500 mb-1">BYE week</div>
                     <div className="text-sm text-gray-700">{player.bye_week ?? '-'}</div>

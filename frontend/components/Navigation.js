@@ -163,7 +163,7 @@ export default function Navigation() {
                   />
                 </Link>
               </div>
-              <div className="hidden sm:ml-8 sm:flex sm:space-x-8 items-center">
+              <div className="hidden lg:ml-8 lg:flex lg:space-x-6 items-center">
                 {navItems.map((item) => (
                   <Link
                     key={item.href}
@@ -276,7 +276,7 @@ export default function Navigation() {
             {/* Right side - compact week indicator for everyone (the admin
                 Year/Week/Day selectors live inside the Admin dropdown and the
                 mobile burger; they overlapped the nav links out here) */}
-            <div className="hidden sm:flex items-center">
+            <div className="hidden lg:flex items-center">
               {currentWeek !== null && (
                 <div className="text-sm text-gray-600">
                   {currentWeek === 'Setup' ? 'Setup' : currentWeek === 'Preseason' ? 'Preseason' : `Week ${currentWeek}`}
@@ -285,7 +285,7 @@ export default function Navigation() {
             </div>
 
             {/* Mobile hamburger button */}
-            <div className="flex items-center sm:hidden">
+            <div className="flex items-center lg:hidden">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 aria-label="Toggle menu"
@@ -307,7 +307,7 @@ export default function Navigation() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="sm:hidden border-t border-gray-200">
+          <div className="lg:hidden border-t border-gray-200">
             <div className="py-2 px-4 space-y-1">
               {navItems.map((item) => (
                 <Link
