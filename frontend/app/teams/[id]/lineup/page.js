@@ -505,37 +505,39 @@ export default function LineupPage() {
                 key={player.player_id}
                 className="p-4 bg-gray-50 border border-gray-200 rounded-lg"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {!lineupLocked && group.players.length > 1 && (
-                      <div className="flex flex-col">
-                        <button
-                          onClick={() => moveBenchPlayer(group.key, benchIndex, -1)}
-                          disabled={benchIndex === 0}
-                          className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer leading-none"
-                          title="Move up in sub priority"
-                        >▲</button>
-                        <button
-                          onClick={() => moveBenchPlayer(group.key, benchIndex, 1)}
-                          disabled={benchIndex === group.players.length - 1}
-                          className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer leading-none"
-                          title="Move down in sub priority"
-                        >▼</button>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {group.players.length > 1 && (
+                      <div className="flex flex-col items-center shrink-0" title="Auto-sub priority within this group">
+                        {!lineupLocked && (
+                          <button
+                            onClick={() => moveBenchPlayer(group.key, benchIndex, -1)}
+                            disabled={benchIndex === 0}
+                            className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer leading-none"
+                            title="Move up in sub priority"
+                          >▲</button>
+                        )}
+                        <span className="w-6 h-6 flex items-center justify-center bg-gray-300 text-gray-700 rounded-full text-xs font-bold">
+                          {benchIndex + 1}
+                        </span>
+                        {!lineupLocked && (
+                          <button
+                            onClick={() => moveBenchPlayer(group.key, benchIndex, 1)}
+                            disabled={benchIndex === group.players.length - 1}
+                            className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer leading-none"
+                            title="Move down in sub priority"
+                          >▼</button>
+                        )}
                       </div>
                     )}
-                    {group.players.length > 1 && (
-                      <span className="w-7 h-7 flex items-center justify-center bg-gray-300 text-gray-700 rounded-full text-sm font-bold" title="Auto-sub priority within this group">
-                        {benchIndex + 1}
-                      </span>
-                    )}
-                    <span className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm font-semibold">
-                      {player.player_position}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <div>
-                        <div className="font-semibold">{player.player_name}</div>
+                    {/* Position lives in the subtext line, matching the
+                        Starting Lineup rows (badge dropped — it misaligned
+                        rows and ate mobile width; Chris, Aug 2026). */}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="min-w-0">
+                        <div className="font-semibold truncate">{player.player_name}</div>
                         <div className="text-sm text-gray-600">
-                          <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || 'N/A'}</span>
+                          {player.player_position} • <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || 'N/A'}</span>
                           {player.opponent && (
                             <span className="ml-2 font-semibold text-primary-700">
                               vs {player.opponent}
