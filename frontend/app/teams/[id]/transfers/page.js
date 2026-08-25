@@ -775,7 +775,7 @@ export default function TransfersPage() {
               </span>
             </span>
             <span>
-              Left{' '}
+              Remaining{' '}
               <span className={`font-bold ${preview.isAffordable ? 'text-positive-600' : 'text-danger-600'}`}>
                 ${preview.remainingBudget.toFixed(1)}M
               </span>
