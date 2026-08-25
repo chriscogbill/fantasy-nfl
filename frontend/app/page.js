@@ -186,9 +186,11 @@ export default function Home() {
           <Link href="/players" className="btn-primary">
             Browse Players
           </Link>
-          <Link href="/leagues" className="btn-primary">
-            View Leagues
-          </Link>
+          {user && (
+            <Link href="/leagues" className="btn-primary">
+              View Leagues
+            </Link>
+          )}
         </div>
       </div>
 
