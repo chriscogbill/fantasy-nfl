@@ -924,8 +924,11 @@ export default function TransfersPage() {
                     }`}
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {/* Web badge; on mobile the position moves ABOVE the
+                          name (Chris, Aug 2026) so DEF/K badge widths can't
+                          misalign rows and names get the full width. */}
                       <span
-                        className={`px-3 py-1 text-sm font-semibold rounded ${
+                        className={`hidden sm:inline-block px-3 py-1 text-sm font-semibold rounded ${
                           positionColors[player.player_position] || 'bg-gray-100'
                         }`}
                       >
@@ -933,6 +936,13 @@ export default function TransfersPage() {
                       </span>
                       <div className="flex-1 flex items-center gap-2 min-w-0">
                         <div className="min-w-0">
+                          <span
+                            className={`sm:hidden inline-block px-1.5 py-0.5 text-[10px] font-semibold rounded mb-0.5 ${
+                              positionColors[player.player_position] || 'bg-gray-100'
+                            }`}
+                          >
+                            {player.player_position}
+                          </span>
                           <div className="font-semibold truncate">{player.player_name || 'Unknown Player'}</div>
                           <div className="text-sm text-gray-600">
                             <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || 'N/A'}</span>
@@ -947,7 +957,7 @@ export default function TransfersPage() {
                         </button>
                       </div>
                       {isIncoming && (
-                        <div className="text-xs font-semibold text-yellow-700 bg-yellow-200 px-2 py-1 rounded">
+                        <div className="text-[10px] sm:text-xs font-semibold text-yellow-700 bg-yellow-200 px-1.5 sm:px-2 py-1 rounded shrink-0 whitespace-nowrap">
                           INCOMING
                         </div>
                       )}
@@ -1102,7 +1112,7 @@ export default function TransfersPage() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <span
-                    className={`px-3 py-1 text-sm font-semibold rounded ${
+                    className={`hidden sm:inline-block px-3 py-1 text-sm font-semibold rounded ${
                       positionColors[player.player_position] || 'bg-gray-100'
                     }`}
                   >
@@ -1110,6 +1120,13 @@ export default function TransfersPage() {
                   </span>
                   <div className="flex items-center gap-2">
                     <div className="min-w-0">
+                      <span
+                        className={`sm:hidden inline-block px-1.5 py-0.5 text-[10px] font-semibold rounded mb-0.5 ${
+                          positionColors[player.player_position] || 'bg-gray-100'
+                        }`}
+                      >
+                        {player.player_position}
+                      </span>
                       <div className="font-semibold truncate">{player.player_name || 'Unknown Player'}</div>
                       <div className="text-sm text-gray-600">
                         <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle"><TeamLogo team={player.player_team} className="w-4 h-4 shrink-0" /> {player.player_team || 'N/A'}</span>
@@ -1143,7 +1160,7 @@ export default function TransfersPage() {
                   <div className="hidden md:block w-8"></div>
                   <div className="hidden md:block w-20"></div>
                   <div className="hidden md:block w-20"></div>
-                  <div className="text-center w-14">
+                  <div className="hidden sm:block text-center w-14">
                     <div className="text-xs text-gray-500 mb-1">BYE week</div>
                     <div className="text-sm text-gray-700">{player.bye_week ?? '-'}</div>
                   </div>
