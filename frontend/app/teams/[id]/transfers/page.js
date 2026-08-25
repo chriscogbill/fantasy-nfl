@@ -34,6 +34,9 @@ export default function TransfersPage() {
 
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState(false);
+  // Mobile: the sticky summary card ate half the screen — details are
+  // collapsed behind a toggle below sm (desktop always expanded).
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [autoPickToast, setAutoPickToast] = useState(null); // { message, type: 'success' | 'error' }
@@ -726,8 +729,14 @@ export default function TransfersPage() {
         {/* Header with Roster Total */}
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-bold">{roster.length === 0 ? 'Roster Selection' : 'Transfer Summary'}</h2>
-          <div className="flex items-center">
-            <span className="text-xs text-gray-600 mr-2">Roster:</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSummaryExpanded((v) => !v)}
+              className="sm:hidden text-xs text-gray-600 underline underline-offset-2 decoration-dotted cursor-pointer"
+            >
+              {summaryExpanded ? 'hide details' : 'details'}
+            </button>
+            <span className="text-xs text-gray-600">Roster:</span>
             <div className="bg-white rounded px-3 py-1 border border-primary-200">
               <span className={`text-lg font-bold ${(preview?.rosterCount || roster.length) === 15 ? 'text-primary-600' : 'text-danger-600'}`}>
                 {preview?.rosterCount || roster.length}/15
@@ -738,7 +747,7 @@ export default function TransfersPage() {
 
         {/* Players In/Out Summary - Only show when roster exists */}
         {roster.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className={`${summaryExpanded ? 'grid' : 'hidden'} sm:grid grid-cols-2 gap-2 mb-3`}>
             <div className="bg-white rounded px-3 py-1 border border-danger-200 flex justify-between items-center">
               <span className="text-xs text-gray-600">Players Out</span>
               <span className="text-lg font-bold text-danger-600">{playersToSell.length}</span>
@@ -750,9 +759,41 @@ export default function TransfersPage() {
           </div>
         )}
 
+        {/* Mobile one-liner: the numbers that matter while picking. */}
+        {preview && !summaryExpanded && (
+          <div className="sm:hidden bg-white rounded px-2 py-1.5 mb-2 border border-primary-200 text-xs flex flex-wrap gap-x-3 gap-y-0.5">
+            {roster.length > 0 && (
+              <span>
+                Out <span className="font-bold text-danger-600">{playersToSell.length}</span>
+                {' '}· In <span className="font-bold text-positive-600">{playersToBuy.length}</span>
+              </span>
+            )}
+            <span>
+              {roster.length === 0 ? 'Spending ' : 'Change '}
+              <span className={`font-bold ${(preview.moneyNeeded - preview.moneyFreed) > 0 ? 'text-danger-600' : 'text-positive-600'}`}>
+                {roster.length === 0 ? '' : ((preview.moneyNeeded - preview.moneyFreed) > 0 ? '-' : '+')}${Math.abs(preview.moneyNeeded - preview.moneyFreed).toFixed(1)}M
+              </span>
+            </span>
+            <span>
+              Left{' '}
+              <span className={`font-bold ${preview.isAffordable ? 'text-positive-600' : 'text-danger-600'}`}>
+                ${preview.remainingBudget.toFixed(1)}M
+              </span>
+            </span>
+            {roster.length > 0 && currentWeek !== 'Preseason' && (
+              <span>
+                Cost{' '}
+                <span className={`font-bold ${preview.pointCost > 0 ? 'text-danger-600' : 'text-positive-600'}`}>
+                  {preview.pointCost > 0 ? `-${preview.pointCost}` : '0'}
+                </span>
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Financial Details */}
         {preview && (
-          <div className="bg-white rounded p-2 mb-2 border border-primary-200 text-sm">
+          <div className={`${summaryExpanded ? 'block' : 'hidden'} sm:block bg-white rounded p-2 mb-2 border border-primary-200 text-sm`}>
             {/* Player Values - hide during initial roster selection */}
             {roster.length > 0 && (
               <div className="grid grid-cols-2 gap-2 mb-2">
