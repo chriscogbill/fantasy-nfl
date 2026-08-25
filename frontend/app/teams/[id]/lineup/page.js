@@ -520,9 +520,9 @@ export default function LineupPage() {
                         <button
                           onClick={() => moveBenchPlayer(group.key, benchIndex, -1)}
                           disabled={benchIndex === 0}
-                          className="h-5 w-6 flex items-center justify-center text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer"
+                          className="h-6 w-8 flex items-center justify-center text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer"
                           title="Move up in sub priority"
-                        ><svg viewBox="0 0 12 8" className="w-3 h-2 fill-current" aria-hidden="true"><path d="M6 0 L12 8 L0 8 Z"/></svg></button>
+                        ><svg viewBox="0 0 14 12" className="w-3.5 h-3 fill-current" aria-hidden="true"><path d="M7 0 L14 12 L0 12 Z"/></svg></button>
                       )}
                       <span className="w-6 h-6 flex items-center justify-center bg-gray-300 text-gray-700 rounded-full text-xs font-bold leading-none">
                         {benchIndex + 1}
@@ -531,9 +531,9 @@ export default function LineupPage() {
                         <button
                           onClick={() => moveBenchPlayer(group.key, benchIndex, 1)}
                           disabled={benchIndex === group.players.length - 1}
-                          className="h-5 w-6 flex items-center justify-center text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer"
+                          className="h-6 w-8 flex items-center justify-center text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer"
                           title="Move down in sub priority"
-                        ><svg viewBox="0 0 12 8" className="w-3 h-2 fill-current" aria-hidden="true"><path d="M6 8 L12 0 L0 0 Z"/></svg></button>
+                        ><svg viewBox="0 0 14 12" className="w-3.5 h-3 fill-current" aria-hidden="true"><path d="M7 12 L14 0 L0 0 Z"/></svg></button>
                       )}
                     </div>
                   <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
