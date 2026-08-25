@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: 'Fantasy NFL',
-  description: 'Manage your Fantasy NFL team with dynamic salary cap',
+  description: 'Build your NFL team on a $100M budget — player prices move with form. Set weekly lineups, make transfers and compete in leagues.',
 };
 
 export default function RootLayout({ children }) {
