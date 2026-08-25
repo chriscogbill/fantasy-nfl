@@ -12,8 +12,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
+  metadataBase: new URL('https://fantasynfl.cogs.tech'),
   title: 'Fantasy NFL',
-  description: 'Build your NFL team on a $100M budget — player prices move with form. Set weekly lineups, make transfers and compete in leagues.',
+  description: 'Build your NFL team with a $100M budget — player prices move with form. Set weekly lineups, make transfers and compete in leagues.',
 };
 
 export default function RootLayout({ children }) {
