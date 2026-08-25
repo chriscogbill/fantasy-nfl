@@ -505,31 +505,36 @@ export default function LineupPage() {
                 key={player.player_id}
                 className="p-4 bg-gray-50 border border-gray-200 rounded-lg"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {group.players.length > 1 && (
-                      <div className="flex flex-col items-center shrink-0" title="Auto-sub priority within this group">
-                        {!lineupLocked && (
-                          <button
-                            onClick={() => moveBenchPlayer(group.key, benchIndex, -1)}
-                            disabled={benchIndex === 0}
-                            className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer leading-none"
-                            title="Move up in sub priority"
-                          >▲</button>
-                        )}
-                        <span className="w-6 h-6 flex items-center justify-center bg-gray-300 text-gray-700 rounded-full text-xs font-bold">
-                          {benchIndex + 1}
-                        </span>
-                        {!lineupLocked && (
-                          <button
-                            onClick={() => moveBenchPlayer(group.key, benchIndex, 1)}
-                            disabled={benchIndex === group.players.length - 1}
-                            className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer leading-none"
-                            title="Move down in sub priority"
-                          >▼</button>
-                        )}
-                      </div>
-                    )}
+                <div className="flex items-center gap-3">
+                  {/* Ordering control sits OUTSIDE the stacking wrapper so
+                      it centres against the whole card, name row and slot
+                      buttons included. Fixed flex-centred boxes give the
+                      arrows symmetric spacing round the number (the bare
+                      glyphs carried uneven baseline space). */}
+                  {group.players.length > 1 && (
+                    <div className="flex flex-col items-center gap-0.5 shrink-0" title="Auto-sub priority within this group">
+                      {!lineupLocked && (
+                        <button
+                          onClick={() => moveBenchPlayer(group.key, benchIndex, -1)}
+                          disabled={benchIndex === 0}
+                          className="h-5 w-6 flex items-center justify-center text-lg leading-none text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer"
+                          title="Move up in sub priority"
+                        >▲</button>
+                      )}
+                      <span className="w-6 h-6 flex items-center justify-center bg-gray-300 text-gray-700 rounded-full text-xs font-bold">
+                        {benchIndex + 1}
+                      </span>
+                      {!lineupLocked && (
+                        <button
+                          onClick={() => moveBenchPlayer(group.key, benchIndex, 1)}
+                          disabled={benchIndex === group.players.length - 1}
+                          className="h-5 w-6 flex items-center justify-center text-lg leading-none text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-default cursor-pointer"
+                          title="Move down in sub priority"
+                        >▼</button>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     {/* Position lives in the subtext line, matching the
                         Starting Lineup rows (badge dropped — it misaligned
                         rows and ate mobile width; Chris, Aug 2026). */}
@@ -553,8 +558,7 @@ export default function LineupPage() {
                         ℹ️
                       </button>
                     </div>
-                  </div>
-                  {!lineupLocked && <div className="flex gap-2 flex-wrap">
+                    {!lineupLocked && <div className="flex gap-2 flex-wrap">
                     {requiredPositions
                       .filter((pos) => canPlayInSlot(player, pos.slot))
                       .map((pos) => {
@@ -579,7 +583,8 @@ export default function LineupPage() {
                           </button>
                         );
                       })}
-                  </div>}
+                    </div>}
+                  </div>
                 </div>
               </div>
               ))}
