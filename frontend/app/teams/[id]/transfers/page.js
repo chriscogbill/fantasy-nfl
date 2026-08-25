@@ -1110,7 +1110,7 @@ export default function TransfersPage() {
                     : 'bg-gray-50 border-gray-200 hover:border-green-300 hover:bg-green-50'
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                   <span
                     className={`hidden sm:inline-block px-3 py-1 text-sm font-semibold rounded ${
                       positionColors[player.player_position] || 'bg-gray-100'
@@ -1118,7 +1118,7 @@ export default function TransfersPage() {
                   >
                     {player.player_position}
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex-1 flex items-center gap-2 min-w-0">
                     <div className="min-w-0">
                       <span
                         className={`sm:hidden inline-block px-1.5 py-0.5 text-[10px] font-semibold rounded mb-0.5 ${
