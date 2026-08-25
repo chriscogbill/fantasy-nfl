@@ -521,7 +521,7 @@ export default function LineupPage() {
                           title="Move up in sub priority"
                         >▲</button>
                       )}
-                      <span className="w-6 h-6 flex items-center justify-center bg-gray-300 text-gray-700 rounded-full text-xs font-bold">
+                      <span className="w-6 h-6 flex items-center justify-center bg-gray-300 text-gray-700 rounded-full text-xs font-bold leading-none">
                         {benchIndex + 1}
                       </span>
                       {!lineupLocked && (
