@@ -511,9 +511,12 @@ export default function LineupPage() {
                       buttons included. Fixed flex-centred boxes give the
                       arrows symmetric spacing round the number (the bare
                       glyphs carried uneven baseline space). */}
-                  {group.players.length > 1 && (
-                    <div className="flex flex-col items-center gap-0.5 shrink-0" title="Auto-sub priority within this group">
-                      {!lineupLocked && (
+                  {/* Singleton groups show the circle only (still the
+                      auto-sub priority for that position) — no arrows,
+                      since there is nothing to reorder. Keeps the name
+                      column left-aligned across all groups. */}
+                  <div className="flex flex-col items-center gap-0.5 shrink-0" title="Auto-sub priority within this group">
+                      {!lineupLocked && group.players.length > 1 && (
                         <button
                           onClick={() => moveBenchPlayer(group.key, benchIndex, -1)}
                           disabled={benchIndex === 0}
@@ -524,7 +527,7 @@ export default function LineupPage() {
                       <span className="w-6 h-6 flex items-center justify-center bg-gray-300 text-gray-700 rounded-full text-xs font-bold leading-none">
                         {benchIndex + 1}
                       </span>
-                      {!lineupLocked && (
+                      {!lineupLocked && group.players.length > 1 && (
                         <button
                           onClick={() => moveBenchPlayer(group.key, benchIndex, 1)}
                           disabled={benchIndex === group.players.length - 1}
@@ -533,7 +536,6 @@ export default function LineupPage() {
                         >▼</button>
                       )}
                     </div>
-                  )}
                   <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     {/* Position lives in the subtext line, matching the
                         Starting Lineup rows (badge dropped — it misaligned
