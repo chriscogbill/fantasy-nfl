@@ -192,8 +192,37 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* How It Works */}
+      <div className="card">
+        <h2 className="text-2xl font-bold mb-4">How It Works</h2>
+        <ol className="space-y-3 text-gray-700">
+          <li className="flex items-start">
+            <span className="font-bold text-primary-600 mr-3">1.</span>
+            <span>Create a team with $100 million budget</span>
+          </li>
+          <li className="flex items-start">
+            <span className="font-bold text-primary-600 mr-3">2.</span>
+            <span>Buy 15 players for your roster (minimum 1 QB, 3 RB, 3 WR, 1 TE, 1 K, 1 DEF)</span>
+          </li>
+          <li className="flex items-start">
+            <span className="font-bold text-primary-600 mr-3">3.</span>
+            <span>Set your weekly starting lineup (1 QB, 2 RB, 2 WR, 1 TE, 1 FLEX, 1 K, 1 DEF)</span>
+          </li>
+          <li className="flex items-start">
+            <span className="font-bold text-primary-600 mr-3">4.</span>
+            <span>Make transfers week-to-week to improve your team — player prices rise and fall with form, so catching a price rise early grows your budget</span>
+          </li>
+          <li className="flex items-start">
+            <span className="font-bold text-primary-600 mr-3">5.</span>
+            <span>Compete in leagues and climb the standings!</span>
+          </li>
+        </ol>
+      </div>
+
+      {/* Stats Section — hidden for launch (2 teams / 1 league isn't a
+          flex yet; Chris, Aug 2026). Drop the `hidden` class to bring it
+          back once the numbers are worth showing. */}
+      <div className="hidden grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">
           <div className="stat-box">
             <div className="text-4xl font-bold text-primary-600">
@@ -218,33 +247,6 @@ export default function Home() {
             <div className="text-gray-600 mt-2">NFL Players</div>
           </div>
         </div>
-      </div>
-
-      {/* How It Works */}
-      <div className="card">
-        <h2 className="text-2xl font-bold mb-4">How It Works</h2>
-        <ol className="space-y-3 text-gray-700">
-          <li className="flex items-start">
-            <span className="font-bold text-primary-600 mr-3">1.</span>
-            <span>Create a team with $100 million budget</span>
-          </li>
-          <li className="flex items-start">
-            <span className="font-bold text-primary-600 mr-3">2.</span>
-            <span>Buy 15 players for your roster (minimum 1 QB, 3 RB, 3 WR, 1 TE, 1 K, 1 DEF)</span>
-          </li>
-          <li className="flex items-start">
-            <span className="font-bold text-primary-600 mr-3">3.</span>
-            <span>Set your weekly starting lineup (1 QB, 2 RB, 2 WR, 1 TE, 1 FLEX, 1 K, 1 DEF)</span>
-          </li>
-          <li className="flex items-start">
-            <span className="font-bold text-primary-600 mr-3">4.</span>
-            <span>Make transfers week-to-week to improve your team</span>
-          </li>
-          <li className="flex items-start">
-            <span className="font-bold text-primary-600 mr-3">5.</span>
-            <span>Compete in leagues and climb the standings!</span>
-          </li>
-        </ol>
       </div>
     </div>
   );
