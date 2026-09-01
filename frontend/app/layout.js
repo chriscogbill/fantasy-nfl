@@ -12,6 +12,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
+  // PWA: app/manifest.webmanifest + app/apple-icon.png are auto-linked by
+  // Next; this makes Add to Home Screen (iOS) / Add to Dock (macOS Safari)
+  // open full-screen with the app's own identity.
+  appleWebApp: { capable: true, title: "Fantasy NFL", statusBarStyle: "default" },
   metadataBase: new URL('https://fantasynfl.cogs.tech'),
   title: 'Fantasy NFL',
   description: 'Build your NFL dream team with a $100M budget.',
