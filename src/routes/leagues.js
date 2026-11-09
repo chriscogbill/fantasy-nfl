@@ -4,6 +4,38 @@ const pool = require('../db/connection');
 const { getCurrentSeason } = require('../helpers/settings');
 const { requireAuth, requireTeamOwnership } = require('../middleware/requireAuth');
 const { stripPiiForAnon } = require('../middleware/stripPiiForAnon');
+const crypto = require('crypto');
+
+// Unambiguous characters (no 0/O, 1/I/L), drawn with a CSPRNG
+const INVITE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function newInviteCode() {
+  let code = '';
+  for (let i = 0; i < 8; i++) code += INVITE_ALPHABET[crypto.randomInt(INVITE_ALPHABET.length)];
+  return code;
+}
+
+// A private league's invite code is what lets people join it, so only its
+// admin, its members and site admins may see it. Everyone else gets the
+// league without the code.
+async function hideInviteCodes(req, leagues) {
+  const email = req.session && req.session.email;
+  if (req.session && req.session.role === 'admin') return leagues;
+  let memberOf = new Set();
+  if (email && leagues.some(l => l.invite_code)) {
+    const result = await pool.query(
+      `SELECT DISTINCT le.league_id FROM league_entries le
+       JOIN teams t ON t.team_id = le.team_id
+       WHERE t.user_email = $1 AND le.league_id = ANY($2::int[])`,
+      [email, leagues.map(l => l.league_id)]
+    );
+    memberOf = new Set(result.rows.map(r => r.league_id));
+  }
+  for (const league of leagues) {
+    const allowed = email && (league.league_admin_email === email || memberOf.has(league.league_id));
+    if (!allowed) delete league.invite_code;
+  }
+  return leagues;
+}
 
 // Public read routes stay accessible but must not leak email addresses
 // to anonymous callers.
@@ -37,6 +69,7 @@ router.get('/', async (req, res) => {
     `;
 
     const result = await pool.query(query, params);
+    await hideInviteCodes(req, result.rows);
 
     res.json({
       success: true,
@@ -76,7 +109,7 @@ router.post('/', requireAuth, async (req, res) => {
     // Generate invite code for private leagues
     let inviteCode = null;
     if (privacyType === 'private') {
-      inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+      inviteCode = newInviteCode();
     }
 
     const result = await pool.query(
@@ -133,6 +166,7 @@ router.get('/:id', async (req, res) => {
     if (leagueResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'League not found' });
     }
+    await hideInviteCodes(req, leagueResult.rows);
 
     // Get teams in league
     const teamsResult = await pool.query(
