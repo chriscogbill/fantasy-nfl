@@ -250,6 +250,10 @@ class ApiClient {
     return this.request(`/api/deadlines/${season}/${week}`);
   }
 
+  async getEditableWeek() {
+    return this.request('/api/deadlines/editable');
+  }
+
   async updateDeadline(season, week, data) {
     return this.request(`/api/deadlines/${season}/${week}`, {
       method: 'PUT',

@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../db/connection');
 const { requireAdmin } = require('../middleware/requireAuth');
 const { getCurrentSeason } = require('../helpers/settings');
+const { getEditableWeek } = require('../helpers/editableWeek');
 
 // GET /api/deadlines?season=2024 — Get all deadlines for a season
 router.get('/', async (req, res) => {
@@ -16,6 +17,18 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Error fetching deadlines:', error);
     res.json({ success: false, error: 'Failed to fetch deadlines' });
+  }
+});
+
+// GET /api/deadlines/editable — The week owners can change now, and whether
+// it's locked. Same rule the lineup/transfer endpoints enforce.
+router.get('/editable', async (req, res) => {
+  try {
+    const { season, week, locked, reason } = await getEditableWeek(pool);
+    res.json({ success: true, season, week, locked, reason });
+  } catch (error) {
+    console.error('Error fetching editable week:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch editable week' });
   }
 });
 

@@ -5,6 +5,14 @@ const { getCurrentSeason } = require('../helpers/settings');
 const { requireAuth, requireTeamOwnership } = require('../middleware/requireAuth');
 const { stripPiiForAnon } = require('../middleware/stripPiiForAnon');
 const { joinGlobalLeague } = require('../helpers/globalLeague');
+const { getEditableWeek, requireEditableWeek } = require('../helpers/editableWeek');
+const { ensureTeamRoster } = require('../helpers/advanceWeek');
+
+// The 9 starting slots and the positions each one accepts
+const STARTER_SLOTS = {
+  QB: ['QB'], RB1: ['RB'], RB2: ['RB'], WR1: ['WR'], WR2: ['WR'],
+  TE: ['TE'], FLEX: ['RB', 'WR', 'TE'], K: ['K'], DEF: ['DEF'],
+};
 
 // Public read routes stay accessible (spectator profiles) but must not
 // leak email addresses to anonymous callers.
@@ -228,6 +236,13 @@ router.get('/:id/roster', async (req, res) => {
       });
     }
 
+    // The editable week's roster may not exist yet for teams that made no
+    // transfers; start it from last week's so the lineup page isn't empty.
+    const editable = await getEditableWeek(pool);
+    if (editable.week !== null && Number(week) === editable.week && Number(season) === editable.season) {
+      await ensureTeamRoster(pool, id, editable.week, editable.season);
+    }
+
     // Use the database function for roster with points
     const result = await pool.query(
       `SELECT * FROM get_lineup_with_points($1, $2, $3)`,
@@ -288,20 +303,13 @@ router.get('/:id/standings', async (req, res) => {
 });
 
 // PUT /api/teams/:id/lineup - Manually set starting lineup
-router.put('/:id/lineup', requireTeamOwnership({ from: 'params' }), async (req, res) => {
+router.put('/:id/lineup', requireTeamOwnership({ from: 'params' }), requireEditableWeek({ teamFrom: 'params', db: pool }), async (req, res) => {
   const client = await pool.connect();
 
   try {
     const { id } = req.params;
-    const { week, lineup } = req.body;
-    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
-
-    if (!week) {
-      return res.status(400).json({
-        success: false,
-        error: 'week is required'
-      });
-    }
+    const { lineup } = req.body;
+    const { week, season } = req.editable;
 
     if (!lineup || !Array.isArray(lineup)) {
       return res.status(400).json({
@@ -310,31 +318,37 @@ router.put('/:id/lineup', requireTeamOwnership({ from: 'params' }), async (req, 
       });
     }
 
-    // Check deadline enforcement (uses simulated date from app_settings)
-    const settingsResult = await client.query(
-      "SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('current_week', 'current_day', 'current_season')"
+    // Each entry must be a real starting slot, used once, holding a player
+    // from this team's roster whose position fits the slot. Anything else
+    // (made-up slot names, duplicates) would let bench players score.
+    const rosterResult = await client.query(
+      `SELECT r.player_id, p.position FROM rosters r JOIN players p ON p.player_id = r.player_id
+       WHERE r.team_id = $1 AND r.week = $2 AND r.season = $3`,
+      [id, week, season]
     );
-    const settings = {};
-    settingsResult.rows.forEach(r => { settings[r.setting_key] = r.setting_value; });
-
-    if (settings.current_week && settings.current_week !== 'Preseason' && settings.current_week !== 'Setup') {
-      const deadlineResult = await client.query(
-        'SELECT deadline_day FROM lineup_deadlines WHERE season = $1 AND week = $2',
-        [parseInt(settings.current_season) || season, parseInt(settings.current_week) + 1]
-      );
-
-      if (deadlineResult.rows.length > 0) {
-        const deadlineDay = deadlineResult.rows[0].deadline_day;
-        const currentDay = parseInt(settings.current_day) || 1;
-
-        if (currentDay >= deadlineDay) {
-          // release happens in finally — releasing here too would double-release
-          return res.status(403).json({
-            success: false,
-            error: 'Lineup locked — deadline has passed for this week'
-          });
-        }
+    const positionOf = new Map(rosterResult.rows.map(r => [r.player_id, r.position]));
+    const seenSlots = new Set();
+    const seenPlayers = new Set();
+    for (const entry of lineup) {
+      const slot = entry && entry.position_slot;
+      const playerId = Number(entry && entry.player_id);
+      if (!Object.prototype.hasOwnProperty.call(STARTER_SLOTS, slot)) {
+        return res.status(400).json({ success: false, error: `Unknown lineup slot: ${slot}` });
       }
+      if (seenSlots.has(slot)) {
+        return res.status(400).json({ success: false, error: `Slot ${slot} is used more than once` });
+      }
+      if (!positionOf.has(playerId)) {
+        return res.status(400).json({ success: false, error: `Player ${entry.player_id} is not on this week's roster` });
+      }
+      if (seenPlayers.has(playerId)) {
+        return res.status(400).json({ success: false, error: `Player ${playerId} is in more than one slot` });
+      }
+      if (!STARTER_SLOTS[slot].includes(positionOf.get(playerId))) {
+        return res.status(400).json({ success: false, error: `A ${positionOf.get(playerId)} can't play ${slot}` });
+      }
+      seenSlots.add(slot);
+      seenPlayers.add(playerId);
     }
 
     await client.query('BEGIN');
@@ -353,7 +367,7 @@ router.put('/:id/lineup', requireTeamOwnership({ from: 'params' }), async (req, 
         `UPDATE rosters
          SET position_slot = $1
          WHERE team_id = $2 AND player_id = $3 AND week = $4 AND season = $5`,
-        [position_slot, id, player_id, week, season]
+        [position_slot, id, Number(player_id), week, season]
       );
     }
 
@@ -386,36 +400,15 @@ router.put('/:id/lineup', requireTeamOwnership({ from: 'params' }), async (req, 
 // PUT /api/teams/:id/bench-order - Set bench priority for auto-subs.
 // Body: { week, season?, order: [player_id, ...] } — first in the array is
 // first to come in. Same deadline lock as lineup changes.
-router.put('/:id/bench-order', requireTeamOwnership({ from: 'params' }), async (req, res) => {
+router.put('/:id/bench-order', requireTeamOwnership({ from: 'params' }), requireEditableWeek({ teamFrom: 'params', db: pool }), async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
-    const { week, order } = req.body;
-    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
+    const { order } = req.body;
+    const { week, season } = req.editable;
 
-    if (!week || !Array.isArray(order) || order.length === 0) {
-      return res.status(400).json({ success: false, error: 'week and a non-empty order array are required' });
-    }
-
-    // Same deadline enforcement as lineup changes
-    const settingsResult = await client.query(
-      "SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('current_week', 'current_day', 'current_season')"
-    );
-    const settings = {};
-    settingsResult.rows.forEach(r => { settings[r.setting_key] = r.setting_value; });
-
-    if (settings.current_week && settings.current_week !== 'Preseason' && settings.current_week !== 'Setup') {
-      const deadlineResult = await client.query(
-        'SELECT deadline_day FROM lineup_deadlines WHERE season = $1 AND week = $2',
-        [parseInt(settings.current_season) || season, parseInt(settings.current_week) + 1]
-      );
-      if (deadlineResult.rows.length > 0) {
-        const deadlineDay = deadlineResult.rows[0].deadline_day;
-        const currentDay = parseInt(settings.current_day) || 1;
-        if (currentDay >= deadlineDay) {
-          return res.status(403).json({ success: false, error: 'Bench order locked — deadline has passed for this week' });
-        }
-      }
+    if (!Array.isArray(order) || order.length === 0) {
+      return res.status(400).json({ success: false, error: 'a non-empty order array is required' });
     }
 
     // Only this team's BENCH rows for the week are orderable
@@ -451,18 +444,10 @@ router.put('/:id/bench-order', requireTeamOwnership({ from: 'params' }), async (
 });
 
 // POST /api/teams/:id/lineup/auto - Auto-set optimal starting lineup
-router.post('/:id/lineup/auto', requireTeamOwnership({ from: 'params' }), async (req, res) => {
+router.post('/:id/lineup/auto', requireTeamOwnership({ from: 'params' }), requireEditableWeek({ teamFrom: 'params', db: pool }), async (req, res) => {
   try {
     const { id } = req.params;
-    const { week } = req.body;
-    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
-
-    if (!week) {
-      return res.status(400).json({
-        success: false,
-        error: 'week is required'
-      });
-    }
+    const { week, season } = req.editable;
 
     // Call the database function to set lineup
     await pool.query(
