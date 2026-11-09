@@ -218,11 +218,19 @@ export default function TeamDetailPage() {
           ))}
         </select>
         {roster && (
-          <div className="ml-auto text-lg font-semibold">
-            Total Points:{' '}
-            <span className="text-primary-600">
-              {currentWeek === 'Preseason' ? '0.00' : roster.totalPoints.toFixed(2)}
-            </span>
+          <div className="ml-auto text-right">
+            {currentWeek !== 'Preseason' && roster.transferHits > 0 && (
+              <div className="text-sm text-gray-600">
+                Transfer hits:{' '}
+                <span className="font-semibold text-danger-600">-{roster.transferHits}</span>
+              </div>
+            )}
+            <div className="text-lg font-semibold">
+              Total Points:{' '}
+              <span className="text-primary-600">
+                {currentWeek === 'Preseason' ? '0.00' : roster.totalPoints.toFixed(2)}
+              </span>
+            </div>
           </div>
         )}
       </div>
