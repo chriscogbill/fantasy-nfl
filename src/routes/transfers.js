@@ -227,6 +227,16 @@ router.post('/execute', requireTeamOwnership({ from: 'body' }), requireEditableW
       newFreeTransfers = Math.max(0, freeTransfersAvailable - transfersUsed);
     }
 
+    // Transfers beyond the free allowance cost 6 points each, taken off this
+    // week's score (standings, history and team totals subtract transfer_hits)
+    if (currentWeek !== 'Preseason' && pointCost > 0) {
+      await client.query(
+        `INSERT INTO transfer_hits (team_id, week, season, transfers, points)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [teamId, week, season, Math.round(pointCost / 6), pointCost]
+      );
+    }
+
     // If this purchase just completed the initial 15-man roster and no
     // lineup has been set, default the starters (priciest per slot) so the
     // team isn't an empty lineup page — owners can rearrange freely.

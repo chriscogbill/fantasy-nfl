@@ -286,11 +286,11 @@ CREATE FUNCTION public.get_league_history(p_league_id integer, p_season integer 
     LANGUAGE plpgsql
     AS $$
 BEGIN
-    -- Live-computed from rosters × player_scores (starters only). There is
-    -- no standings snapshot table — points are always current, and a week's
-    -- history exists as soon as its rosters do.
+    -- Live-computed from rosters × player_scores (starters only), minus
+    -- transfer hits. There is no standings snapshot table — points are always
+    -- current, and a week's history exists as soon as its rosters do.
     RETURN QUERY
-    WITH weekly AS (
+    WITH gross AS (
         SELECT r.team_id, r.week AS wk,
                COALESCE(SUM(ps.total_points), 0)::numeric AS pts
         FROM rosters r
@@ -301,6 +301,17 @@ BEGIN
         WHERE r.season = p_season
           AND r.position_slot != 'BENCH'
         GROUP BY r.team_id, r.week
+    ),
+    hits AS (
+        SELECT th.team_id, th.week AS wk, SUM(th.points)::numeric AS pts
+        FROM transfer_hits th
+        WHERE th.season = p_season
+        GROUP BY th.team_id, th.week
+    ),
+    weekly AS (
+        SELECT g.team_id, g.wk, g.pts - COALESCE(h.pts, 0) AS pts
+        FROM gross g
+        LEFT JOIN hits h ON h.team_id = g.team_id AND h.wk = g.wk
     ),
     cum AS (
         SELECT w.team_id, w.wk, w.pts,
@@ -327,11 +338,12 @@ CREATE FUNCTION public.get_league_standings(p_league_id integer, p_week integer,
     LANGUAGE plpgsql
     AS $$
 BEGIN
-    -- Live-computed from rosters × player_scores (starters only, weeks 1..p_week).
+    -- Live-computed from rosters × player_scores (starters only, weeks 1..p_week),
+    -- minus transfer hits (−6 per extra transfer, recorded in transfer_hits).
     -- No snapshot table: mid-week the current week shows partial points as
     -- games complete; completed weeks are stable because stats are frozen.
     RETURN QUERY
-    WITH weekly AS (
+    WITH gross AS (
         SELECT r.team_id, r.week AS wk,
                COALESCE(SUM(ps.total_points), 0)::numeric AS pts
         FROM rosters r
@@ -343,6 +355,21 @@ BEGIN
           AND r.week <= p_week
           AND r.position_slot != 'BENCH'
         GROUP BY r.team_id, r.week
+    ),
+    hits AS (
+        SELECT th.team_id, th.week AS wk, SUM(th.points)::numeric AS pts
+        FROM transfer_hits th
+        WHERE th.season = p_season
+          AND th.week <= p_week
+        GROUP BY th.team_id, th.week
+    ),
+    weekly AS (
+        SELECT COALESCE(g.team_id, h.team_id) AS team_id, COALESCE(g.wk, h.wk) AS wk,
+               COALESCE(g.pts, 0) - COALESCE(h.pts, 0) AS pts
+        FROM gross g
+        FULL OUTER JOIN hits h ON h.team_id = g.team_id AND h.wk = g.wk
+        -- hits only count for teams in this league
+        WHERE COALESCE(g.team_id, h.team_id) IN (SELECT team_id FROM league_entries WHERE league_id = p_league_id)
     ),
     agg AS (
         SELECT w.team_id,
@@ -648,7 +675,8 @@ CREATE FUNCTION public.get_team_league_positions(p_team_id integer, p_week integ
     AS $$
 BEGIN
     -- Live-computed: rank this team within each of its leagues by cumulative
-    -- starter points over weeks 1..p_week (no standings snapshot table).
+    -- starter points over weeks 1..p_week, minus transfer hits (no standings
+    -- snapshot table).
     RETURN QUERY
     SELECT
         l.league_name,
@@ -665,15 +693,23 @@ BEGIN
                    COALESCE(agg.tot, 0)::numeric AS tot
             FROM league_entries le
             LEFT JOIN (
-                SELECT r.team_id AS tid, COALESCE(SUM(ps.total_points), 0) AS tot
-                FROM rosters r
-                LEFT JOIN player_scores ps ON ps.player_id = r.player_id
-                    AND ps.week = r.week AND ps.season = r.season
-                    AND ps.league_format = 'ppr'
-                WHERE r.season = p_season
-                  AND r.week <= p_week
-                  AND r.position_slot != 'BENCH'
-                GROUP BY r.team_id
+                SELECT pts.tid, SUM(pts.p) AS tot
+                FROM (
+                    SELECT r.team_id AS tid, COALESCE(ps.total_points, 0) AS p
+                    FROM rosters r
+                    LEFT JOIN player_scores ps ON ps.player_id = r.player_id
+                        AND ps.week = r.week AND ps.season = r.season
+                        AND ps.league_format = 'ppr'
+                    WHERE r.season = p_season
+                      AND r.week <= p_week
+                      AND r.position_slot != 'BENCH'
+                    UNION ALL
+                    -- transfer hits (−6 per extra transfer)
+                    SELECT th.team_id, -th.points
+                    FROM transfer_hits th
+                    WHERE th.season = p_season AND th.week <= p_week
+                ) pts
+                GROUP BY pts.tid
             ) agg ON agg.tid = le.team_id
             WHERE le.league_id = l.league_id
         ) ranked
@@ -2359,3 +2395,18 @@ CREATE INDEX idx_stats_archive_player ON public.player_stats_archive USING btree
 
 \unrestrict DFzpX8IFhUmOdAItxDWiFe5qiDd7JhDcTKCAi29Oxd42IZf4GHtvOfVJgqy1SYG
 
+--
+-- Name: transfer_hits; Type: TABLE; Schema: public (after the teams PK above)
+-- Points deducted for transfers beyond the free allowance (6 each).
+--
+
+CREATE TABLE IF NOT EXISTS public.transfer_hits (
+    hit_id SERIAL PRIMARY KEY,
+    team_id integer NOT NULL REFERENCES public.teams(team_id) ON DELETE CASCADE,
+    week integer NOT NULL,
+    season integer NOT NULL,
+    transfers integer NOT NULL,
+    points integer NOT NULL CHECK (points > 0),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_transfer_hits_team_week ON public.transfer_hits (team_id, season, week);

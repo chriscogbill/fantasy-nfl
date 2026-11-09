@@ -206,7 +206,12 @@ router.get('/:id', async (req, res) => {
          ) weekly_totals`,
         [id, team.season, parseInt(currentWeek)]
       );
-      seasonTotalPoints = parseFloat(pointsResult.rows[0]?.total || 0);
+      const hitsResult = await pool.query(
+        `SELECT COALESCE(SUM(points), 0) AS hits FROM transfer_hits
+         WHERE team_id = $1 AND season = $2 AND week <= $3`,
+        [id, team.season, parseInt(currentWeek)]
+      );
+      seasonTotalPoints = parseFloat(pointsResult.rows[0]?.total || 0) - parseFloat(hitsResult.rows[0].hits);
     }
 
     res.json({
@@ -253,13 +258,22 @@ router.get('/:id/roster', async (req, res) => {
     const starters = result.rows.filter(p => p.is_starter);
     const bench = result.rows.filter(p => !p.is_starter);
 
-    // Calculate total points
-    const totalPoints = starters.reduce((sum, p) => sum + (parseFloat(p.week_points) || 0), 0);
+    // Starters' points, minus any transfer hits taken for this week
+    const startersPoints = starters.reduce((sum, p) => sum + (parseFloat(p.week_points) || 0), 0);
+    const hitsResult = await pool.query(
+      `SELECT COALESCE(SUM(points), 0)::int AS hits FROM transfer_hits
+       WHERE team_id = $1 AND week = $2 AND season = $3`,
+      [id, week, season]
+    );
+    const transferHits = hitsResult.rows[0].hits;
+    const totalPoints = startersPoints - transferHits;
 
     res.json({
       success: true,
       week: parseInt(week),
       season: parseInt(season),
+      startersPoints: Math.round(startersPoints * 100) / 100,
+      transferHits,
       totalPoints: Math.round(totalPoints * 100) / 100,
       starters,
       bench,
