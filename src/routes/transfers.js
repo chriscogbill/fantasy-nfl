@@ -4,6 +4,7 @@ const pool = require('../db/connection');
 const { getCurrentSeason } = require('../helpers/settings');
 const { requireTeamOwnership } = require('../middleware/requireAuth');
 const { applyDefaultLineup } = require('../helpers/defaultLineup');
+const { requireEditableWeek } = require('../helpers/editableWeek');
 
 // POST /api/transfers/preview - Preview a transfer (calculate costs)
 router.post('/preview', requireTeamOwnership({ from: 'body' }), async (req, res) => {
@@ -56,17 +57,17 @@ router.post('/preview', requireTeamOwnership({ from: 'body' }), async (req, res)
 });
 
 // POST /api/transfers/execute - Execute a transfer (buy/sell players)
-router.post('/execute', requireTeamOwnership({ from: 'body' }), async (req, res) => {
+router.post('/execute', requireTeamOwnership({ from: 'body' }), requireEditableWeek({ teamFrom: 'body', db: pool }), async (req, res) => {
   const client = await pool.connect();
 
   try {
-    const { teamId, playersOut = [], playersIn = [], week } = req.body;
-    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
+    const { teamId, playersOut = [], playersIn = [] } = req.body;
+    const { week, season } = req.editable;
 
-    if (!teamId || !week) {
+    if (!teamId) {
       return res.status(400).json({
         success: false,
-        error: 'teamId and week are required'
+        error: 'teamId is required'
       });
     }
 

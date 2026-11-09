@@ -75,27 +75,20 @@ export default function LineupPage() {
 
       const displayWeek = (week === 'Setup' || week === 'Preseason') ? 1 : parseInt(week) + 1;
 
-      const [teamData, rosterData, deadlineData] = await Promise.all([
+      const [teamData, rosterData, deadlineData, editable] = await Promise.all([
         api.getTeam(teamId),
         api.getTeamRoster(teamId, { week: displayWeek, season }).catch(() => ({
           starters: [],
           bench: [],
         })),
         api.getDeadline(season, displayWeek).catch(() => ({ deadline: null })),
+        api.getEditableWeek().catch(() => ({ locked: false })),
       ]);
 
-      // Check if lineup is locked (never locked during Preseason)
-      if (deadlineData.deadline) {
-        setDeadline(deadlineData.deadline);
-        if (week !== 'Preseason') {
-          setLineupLocked(day >= deadlineData.deadline.deadline_day);
-        } else {
-          setLineupLocked(false);
-        }
-      } else {
-        setDeadline(null);
-        setLineupLocked(false);
-      }
+      // The server decides the lock (real kickoff time in live mode, the
+      // simulated day otherwise), so the page matches what saving will allow
+      setDeadline(deadlineData.deadline || null);
+      setLineupLocked(!!editable.locked);
 
       setTeam(teamData.team);
 
