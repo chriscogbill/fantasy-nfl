@@ -18,6 +18,7 @@ const { getCurrentSeason } = require('../helpers/settings');
 const { requireAdminOrCron } = require('../middleware/requireAuth');
 const { importWeekStats } = require('../../importStats');
 const { applyAutoSubs } = require('../helpers/autoSubs');
+const { carryRostersForward } = require('../helpers/advanceWeek');
 
 const LOCK_OFFSET_MS = 90 * 60 * 1000;
 
@@ -58,7 +59,8 @@ router.post('/tick', requireAdminOrCron, async (req, res) => {
 
     // --- 1. Advance at lock -------------------------------------------------
     // Preseason -> week 1 locks at week 1's deadline (rosters were built
-    // directly into week 1, so nothing copies); week N -> N+1 copies rosters.
+    // directly into week 1); week N -> N+1 keeps the N+1 rosters owners edited.
+    // Either way the newly editable week gets a starting roster.
     const isPreseason = currentWeekRaw === 'Preseason';
     if (isPreseason || (!isNaN(week) && week >= 1 && week < 18)) {
       const next = isPreseason ? 1 : week + 1;
@@ -78,12 +80,10 @@ router.post('/tick', requireAdminOrCron, async (req, res) => {
                WHERE setting_key = 'current_week'`,
               [String(next)]
             );
+            // Never overwrites the rosters owners edited for `next`
+            const carried = await carryRostersForward(pool, isPreseason ? null : week, next, season);
+            log.push(`rosters carried forward: ${JSON.stringify(carried)}`);
             if (!isPreseason) {
-              const copy = await pool.query(
-                `SELECT * FROM copy_all_rosters_to_next_week($1, $2, $3)`,
-                [week, next, season]
-              );
-              log.push(`rosters copied: ${JSON.stringify(copy.rows[0] || null)}`);
               // New week = +1 free transfer for every team, banked up to 5
               const ft = await pool.query(`SELECT increment_weekly_transfers($1)`, [season]);
               log.push(`weekly free transfer granted to ${ft.rows[0].increment_weekly_transfers} teams`);

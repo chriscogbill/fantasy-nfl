@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../db/connection');
 const { requireAdmin } = require('../middleware/requireAuth');
 const { getCurrentSeason } = require('../helpers/settings');
+const { carryRostersForward } = require('../helpers/advanceWeek');
 
 // GET /api/settings - Get all settings
 router.get('/', async (req, res) => {
@@ -93,23 +94,21 @@ router.put('/:key', requireAdmin, async (req, res) => {
         return res.status(404).json({ success: false, error: 'Setting not found' });
       }
 
-      // Auto-copy rosters when advancing from Preseason to Week 1 or between weeks
+      // Carry rosters forward when advancing Preseason -> 1 or N -> N+1.
+      // Never overwrites the rosters owners already edited for the new week.
       let copyResult = null;
+      const currentSeason = await getCurrentSeason(pool);
       if (oldWeek === 'Preseason' && value === '1') {
-        // Don't copy anything - Week 1 rosters should be built manually during preseason
-        console.log('Advanced from Preseason to Week 1 - no roster copying needed');
+        copyResult = { rows: [await carryRostersForward(pool, null, 1, currentSeason)] };
+        console.log('Advanced from Preseason to Week 1:', copyResult.rows[0]);
       } else if (oldWeek !== 'Preseason' && value !== 'Preseason') {
         const fromWeek = parseInt(oldWeek);
         const toWeek = parseInt(value);
 
         // Only copy forward if advancing weeks
         if (toWeek === fromWeek + 1) {
-          const currentSeason = await getCurrentSeason(pool);
-          copyResult = await pool.query(
-            `SELECT * FROM copy_all_rosters_to_next_week($1, $2, $3)`,
-            [fromWeek, toWeek, currentSeason]
-          );
-          console.log(`Copied rosters from Week ${fromWeek} to Week ${toWeek}:`, copyResult.rows[0]);
+          copyResult = { rows: [await carryRostersForward(pool, fromWeek, toWeek, currentSeason)] };
+          console.log(`Advanced from Week ${fromWeek} to Week ${toWeek}:`, copyResult.rows[0]);
           // New week = +1 free transfer for every team, banked up to 5
           const ft = await pool.query(`SELECT increment_weekly_transfers($1)`, [currentSeason]);
           console.log(`Granted weekly free transfer to ${ft.rows[0].increment_weekly_transfers} teams`);

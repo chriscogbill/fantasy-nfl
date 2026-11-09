@@ -481,15 +481,15 @@ DECLARE
   team_count INTEGER;
   player_count INTEGER;
 BEGIN
-  -- Replace any existing rosters for the target week, carrying bench order
-  -- (auto_subbed resets to false via its default — a new week starts clean).
-  DELETE FROM rosters
-  WHERE week = to_week AND season = target_season;
-
+  -- No longer called by the app (see src/helpers/advanceWeek.js). Only fills
+  -- teams that have no roster for the target week: it used to DELETE the
+  -- target week first, which wiped every owner's edits for that week.
   INSERT INTO rosters (team_id, player_id, week, season, position_slot, bench_order)
-  SELECT team_id, player_id, to_week, season, position_slot, bench_order
-  FROM rosters
-  WHERE week = from_week AND season = target_season;
+  SELECT r.team_id, r.player_id, to_week, r.season, r.position_slot, r.bench_order
+  FROM rosters r
+  WHERE r.week = from_week AND r.season = target_season
+    AND NOT EXISTS (SELECT 1 FROM rosters x
+                    WHERE x.team_id = r.team_id AND x.week = to_week AND x.season = target_season);
 
   GET DIAGNOSTICS player_count = ROW_COUNT;
 
