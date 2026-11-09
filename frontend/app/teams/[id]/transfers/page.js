@@ -7,6 +7,7 @@ import { api } from '../../../../lib/api';
 import { useAuth } from '../../../../lib/AuthContext';
 import PlayerStatsModal from '../../../../components/PlayerStatsModal';
 import TeamLogo from '../../../../components/TeamLogo';
+import InfoIcon from '../../../../components/InfoIcon';
 
 export default function TransfersPage() {
   const params = useParams();
@@ -857,7 +858,7 @@ export default function TransfersPage() {
                 </div>
                 {currentWeek === 'Preseason' && (
                   <div className="text-xs text-primary-600 mt-1">
-                    ℹ️ Unlimited free transfers during Preseason
+                    Unlimited free transfers during Preseason
                   </div>
                 )}
                 {currentWeek !== 'Preseason' && preview.pointCost > 0 && (
@@ -994,7 +995,7 @@ export default function TransfersPage() {
                           className="text-primary-500 hover:text-primary-700 text-lg"
                           title="View player stats"
                         >
-                          ℹ️
+                          <InfoIcon />
                         </button>
                       </div>
                       {isIncoming && (
@@ -1178,7 +1179,7 @@ export default function TransfersPage() {
                       className="text-primary-500 hover:text-primary-700 text-lg"
                       title="View player stats"
                     >
-                      ℹ️
+                      <InfoIcon />
                     </button>
                   </div>
                 </div>

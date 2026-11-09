@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
+const { publicError } = require('../helpers/http');
 const { getCurrentSeason } = require('../helpers/settings');
 const { requireAuth, requireTeamOwnership } = require('../middleware/requireAuth');
 const { stripPiiForAnon } = require('../middleware/stripPiiForAnon');
@@ -73,7 +74,7 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching teams:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -137,7 +138,7 @@ router.post('/', requireAuth, async (req, res) => {
       });
     }
     console.error('Error creating team:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -223,7 +224,7 @@ router.get('/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching team:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -281,7 +282,7 @@ router.get('/:id/roster', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching roster:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -312,7 +313,7 @@ router.get('/:id/standings', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching standings:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -405,7 +406,7 @@ router.put('/:id/lineup', requireTeamOwnership({ from: 'params' }), requireEdita
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error updating lineup:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   } finally {
     client.release();
   }
@@ -451,7 +452,7 @@ router.put('/:id/bench-order', requireTeamOwnership({ from: 'params' }), require
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch (e) { /* no txn */ }
     console.error('Error setting bench order:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   } finally {
     client.release();
   }
@@ -486,7 +487,7 @@ router.post('/:id/lineup/auto', requireTeamOwnership({ from: 'params' }), requir
     });
   } catch (error) {
     console.error('Error auto-setting lineup:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -517,7 +518,7 @@ router.get('/:id/weekly-breakdown', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching weekly breakdown:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -540,7 +541,7 @@ router.get('/:id/transfers', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching transfers:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
