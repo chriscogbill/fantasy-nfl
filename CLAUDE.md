@@ -12,7 +12,7 @@ A full-stack Fantasy NFL salary cap management game where users build NFL fantas
 | Database | PostgreSQL with PL/pgSQL functions |
 | Styling | Tailwind CSS 4 |
 | Data Source | Sleeper API (NFL stats), ESPN API (fixtures) |
-| Auth | cogs-auth shared session (`.cogs.tech` cookie, sessions in shared cogsAuth DB). `src/routes/auth.js` is LEGACY and not mounted in server.js |
+| Auth | cogs-auth shared session (`.cogs.tech` cookie, sessions in shared cogsAuth DB). The old local auth routes were removed (Nov 2026) |
 
 ## Project Structure
 
@@ -27,7 +27,6 @@ fantasy-nfl/
 │       ├── teams.js              # Team CRUD & rosters
 │       ├── leagues.js            # League management
 │       ├── transfers.js          # Trade execution
-│       ├── auth.js               # Authentication
 │       └── settings.js           # System settings (admin only for writes)
 ├── importStats.js                # Import from Sleeper API
 ├── calculatePrices.js            # Dynamic pricing algorithm
@@ -172,7 +171,7 @@ cd frontend && npm run dev  # Dev server on 3001
 - [x] Move hardcoded session secret to environment variable - DONE: server.js now reads `SESSION_SECRET` from env with fallback
 - [x] Move DB credentials to environment variables - DONE: connection.js now reads `DB_USER`, `DB_HOST`, `DB_NAME`, `DB_PASSWORD`, `DB_PORT` from env with fallbacks. Added `.env.example` for reference
 - [x] Add rate limiting on login endpoint - N/A HERE: login is handled by cogs-auth, which has Postgres-backed rate limiting on login + email endpoints (cogs-auth PR #5, July 2026). The legacy local login route isn't mounted
-- [ ] Stop exposing internal error messages to clients (`error.message` is returned directly in API responses)
+- [x] Stop exposing internal error messages to clients - DONE (Nov 2026): 500s return "Internal server error" in production via src/helpers/http.js publicError()
 - [x] Add a persistent session store (currently uses in-memory store which won't scale and loses sessions on restart) - DONE: Using connect-pg-simple with PostgreSQL session table in cogsAuth database
 
 ### Multi-Site / Subdomain Architecture

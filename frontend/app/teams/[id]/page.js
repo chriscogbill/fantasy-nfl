@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/AuthContext';
 import PlayerStatsModal from '../../../components/PlayerStatsModal';
+import InfoIcon from '../../../components/InfoIcon';
 
 export default function TeamDetailPage() {
   const params = useParams();
@@ -264,7 +265,7 @@ export default function TeamDetailPage() {
                             className="text-primary-500 hover:text-primary-700 text-lg"
                             title="View player stats"
                           >
-                            ℹ️
+                            <InfoIcon />
                           </button>
                         </div>
                       </div>
@@ -319,7 +320,7 @@ export default function TeamDetailPage() {
                             className="text-primary-500 hover:text-primary-700 text-lg"
                             title="View player stats"
                           >
-                            ℹ️
+                            <InfoIcon />
                           </button>
                         </div>
                       </div>

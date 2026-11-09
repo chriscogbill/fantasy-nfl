@@ -26,9 +26,11 @@ pool.on('connect', () => {
   console.log('✓ Database connection established');
 });
 
+// An idle client erroring (e.g. the DB restarting or dropping a connection) is
+// recoverable: pg discards that client and the next query opens a fresh one.
+// Exiting here used to restart the whole API on one dropped connection.
 pool.on('error', (err) => {
-  console.error('Unexpected database error:', err);
-  process.exit(-1);
+  console.error('Idle database client error (client discarded):', err.message);
 });
 
 module.exports = pool;

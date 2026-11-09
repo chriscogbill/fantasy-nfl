@@ -7,6 +7,7 @@ import { api } from '../../../../lib/api';
 import { useAuth } from '../../../../lib/AuthContext';
 import PlayerStatsModal from '../../../../components/PlayerStatsModal';
 import TeamLogo from '../../../../components/TeamLogo';
+import InfoIcon from '../../../../components/InfoIcon';
 
 export default function LineupPage() {
   const params = useParams();
@@ -432,7 +433,7 @@ export default function LineupPage() {
                             className="text-primary-500 hover:text-primary-700 text-lg cursor-pointer"
                             title="View player stats"
                           >
-                            ℹ️
+                            <InfoIcon />
                           </button>
                         </div>
                         {!lineupLocked && (
@@ -550,7 +551,7 @@ export default function LineupPage() {
                         className="text-primary-500 hover:text-primary-700 text-lg cursor-pointer"
                         title="View player stats"
                       >
-                        ℹ️
+                        <InfoIcon />
                       </button>
                     </div>
                     {!lineupLocked && <div className="flex gap-2 flex-wrap">

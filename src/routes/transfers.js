@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
+const { publicError } = require('../helpers/http');
 const { getCurrentSeason } = require('../helpers/settings');
 const { requireTeamOwnership } = require('../middleware/requireAuth');
 const { applyDefaultLineup } = require('../helpers/defaultLineup');
@@ -10,7 +11,8 @@ const { requireEditableWeek } = require('../helpers/editableWeek');
 router.post('/preview', requireTeamOwnership({ from: 'body' }), async (req, res) => {
   try {
     const { teamId, playersOut = [], playersIn = [], week } = req.body;
-    const season = req.body.season ? parseInt(req.body.season) : await getCurrentSeason(pool);
+    // Previews are for the current season only (prices are per season)
+    const season = await getCurrentSeason(pool);
 
     if (!teamId || !week) {
       return res.status(400).json({
@@ -52,7 +54,7 @@ router.post('/preview', requireTeamOwnership({ from: 'body' }), async (req, res)
     });
   } catch (error) {
     console.error('Error previewing transfer:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -183,8 +185,8 @@ router.post('/execute', requireTeamOwnership({ from: 'body' }), requireEditableW
     for (const playerId of playersIn) {
       // Get player price
       const priceResult = await client.query(
-        `SELECT current_price FROM player_current_prices WHERE player_id = $1`,
-        [playerId]
+        `SELECT current_price FROM player_current_prices WHERE player_id = $1 AND season = $2`,
+        [playerId, season]
       );
 
       if (priceResult.rows.length === 0) {
@@ -255,7 +257,7 @@ router.post('/execute', requireTeamOwnership({ from: 'body' }), requireEditableW
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error executing transfer:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   } finally {
     client.release();
   }
@@ -301,7 +303,7 @@ router.post('/validate-roster', async (req, res) => {
     });
   } catch (error) {
     console.error('Error validating roster:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -349,7 +351,7 @@ router.get('/history', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching transfer history:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 

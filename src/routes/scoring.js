@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
+const { publicError } = require('../helpers/http');
 const { requireAdmin } = require('../middleware/requireAuth');
 
 // GET /api/scoring - Get all current scoring rules grouped by section
@@ -42,7 +43,7 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching scoring rules:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -72,7 +73,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating scoring rule:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -117,7 +118,7 @@ router.get('/archive', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching archived scoring rules:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 

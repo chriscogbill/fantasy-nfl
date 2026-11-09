@@ -6,6 +6,7 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import TeamLogo from '../../components/TeamLogo';
 import PlayerStatsModal from '../../components/PlayerStatsModal';
+import InfoIcon from '../../components/InfoIcon';
 
 const STORAGE_KEY = 'playersTableConfig';
 
@@ -436,7 +437,7 @@ export default function PlayersPage() {
                         className="text-primary-500 hover:text-primary-700 cursor-pointer"
                         title={`View ${player.player_name}'s stats`}
                       >
-                        ℹ️
+                        <InfoIcon />
                       </button>
                     </div>
                   </td>

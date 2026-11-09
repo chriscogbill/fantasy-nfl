@@ -14,6 +14,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
+const { publicError } = require('../helpers/http');
 const { getCurrentSeason } = require('../helpers/settings');
 const { requireAdminOrCron } = require('../middleware/requireAuth');
 const { importWeekStats } = require('../../importStats');
@@ -152,7 +153,7 @@ router.post('/tick', requireAdminOrCron, async (req, res) => {
     res.json({ success: true, dryRun, season, week: isNaN(week) ? currentWeekRaw : week, log });
   } catch (error) {
     console.error('Error in cron tick:', error);
-    res.status(500).json({ success: false, error: error.message, log });
+    res.status(500).json({ success: false, error: publicError(error), log });
   }
 });
 
@@ -170,7 +171,7 @@ router.post('/auto-subs', requireAdminOrCron, async (req, res) => {
     res.json({ success: true, dryRun, ...result });
   } catch (error) {
     console.error('Error applying auto-subs:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
