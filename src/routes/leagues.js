@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
+const { publicError } = require('../helpers/http');
 const { getCurrentSeason } = require('../helpers/settings');
 const { requireAuth, requireTeamOwnership } = require('../middleware/requireAuth');
 const { stripPiiForAnon } = require('../middleware/stripPiiForAnon');
@@ -78,7 +79,7 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching leagues:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -143,7 +144,7 @@ router.post('/', requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating league:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -193,7 +194,7 @@ router.get('/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching league:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -240,7 +241,7 @@ router.get('/:id/standings', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching standings:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -272,7 +273,7 @@ router.get('/:id/history', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching league history:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -339,7 +340,7 @@ router.post('/join-by-code', requireTeamOwnership({ from: 'body' }), async (req,
     });
   } catch (error) {
     console.error('Error joining league by code:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -405,7 +406,7 @@ router.post('/:id/join', requireTeamOwnership({ from: 'body' }), async (req, res
       });
     }
     console.error('Error joining league:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -442,7 +443,7 @@ router.delete('/:id/leave', requireTeamOwnership({ from: 'body' }), async (req, 
     });
   } catch (error) {
     console.error('Error leaving league:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 

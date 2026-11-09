@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
+const { publicError } = require('../helpers/http');
 const { getCurrentSeason } = require('../helpers/settings');
 const { requireAdmin, requireAdminOrCron } = require('../middleware/requireAuth');
 
@@ -54,7 +55,7 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching players:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -91,7 +92,7 @@ router.get('/season-stat-totals', async (req, res) => {
     res.json({ success: true, season, count: result.rows.length, stats: result.rows });
   } catch (error) {
     console.error('Error fetching season stat totals:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -132,7 +133,7 @@ router.get('/previous-season-prices', requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching previous season prices:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -195,7 +196,7 @@ router.post('/copy-prior-year-prices', requireAdmin, async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error copying prior year prices:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   } finally {
     client.release();
   }
@@ -440,7 +441,7 @@ router.post('/preview-initial-prices', requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error previewing initial prices:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -483,7 +484,7 @@ router.post('/save-suggested-prices', requireAdmin, async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error saving suggested prices:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   } finally {
     client.release();
   }
@@ -524,7 +525,7 @@ router.post('/set-initial-prices', requireAdmin, async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error setting initial prices:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   } finally {
     client.release();
   }
@@ -553,7 +554,7 @@ router.get('/season-totals', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching season totals:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -596,7 +597,7 @@ router.get('/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching player:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -770,7 +771,7 @@ router.get('/:id/stats', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching player stats:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -804,7 +805,7 @@ router.get('/:id/price-history', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching price history:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -843,7 +844,7 @@ router.get('/top/:position', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching top players:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -1025,7 +1026,7 @@ router.post('/reprice', requireAdminOrCron, async (req, res) => {
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch (e) { /* no txn open */ }
     console.error('Error running reprice:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   } finally {
     client.release();
   }
@@ -1112,7 +1113,7 @@ router.put('/:id/price', requireAdmin, async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error updating player price:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   } finally {
     client.release();
   }

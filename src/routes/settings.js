@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
+const { publicError } = require('../helpers/http');
 const { requireAdmin } = require('../middleware/requireAuth');
 const { getCurrentSeason } = require('../helpers/settings');
 const { carryRostersForward } = require('../helpers/advanceWeek');
@@ -30,7 +31,7 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching settings:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -59,7 +60,7 @@ router.get('/:key', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching setting:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -155,7 +156,7 @@ router.put('/:key', requireAdmin, async (req, res) => {
     }
   } catch (error) {
     console.error('Error updating setting:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -220,7 +221,7 @@ router.post('/clear-season-data', requireAdmin, async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error clearing season data:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   } finally {
     client.release();
   }
@@ -330,7 +331,7 @@ router.post('/roll-forward-season', requireAdmin, async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error rolling forward season:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   } finally {
     client.release();
   }
@@ -356,7 +357,7 @@ router.post('/roll-back-season', requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error rolling back season:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
@@ -373,7 +374,7 @@ router.get('/current/week', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching current week:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: publicError(error) });
   }
 });
 
