@@ -1,4 +1,6 @@
 // API Client for Fantasy NFL Backend
+import { lookupSession } from './sessionLookup';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const AUTH_BASE_URL = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002';
 
@@ -209,8 +211,11 @@ class ApiClient {
     });
   }
 
-  async getCurrentUser() {
-    return this.authRequest('/api/auth/me');
+  // Resolves to { kind: 'ok', user } | { kind: 'anonymous' } |
+  // { kind: 'unavailable', reason }. Never throws: a failed check is retried
+  // and then reported as "unavailable", which is not the same as signed out.
+  lookupSession() {
+    return lookupSession(`${AUTH_BASE_URL}/api/auth/me`);
   }
 
   // Settings

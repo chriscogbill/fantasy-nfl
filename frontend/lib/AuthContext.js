@@ -2,12 +2,16 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import { api } from './api';
+import { retryUntilAnswered } from './sessionLookup';
+import AuthUnavailable from '../components/AuthUnavailable';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  // True when the session check got no answer (not the same as signed out).
+  const [authUnavailable, setAuthUnavailable] = useState(false);
   const [userTeamId, setUserTeamId] = useState(null);
   const [teamRosterComplete, setTeamRosterComplete] = useState(false);
   const [currentSeason, setCurrentSeason] = useState(null);
@@ -15,6 +19,18 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     initializeApp();
   }, []);
+
+  // While the session check can't get an answer, keep asking in the
+  // background and bring the app back as soon as it does.
+  useEffect(() => {
+    if (!authUnavailable) return;
+    return retryUntilAnswered(() => api.lookupSession(), applySession);
+  }, [authUnavailable]);
+
+  function applySession(session) {
+    setAuthUnavailable(session.kind === 'unavailable');
+    setUser(session.kind === 'ok' ? session.user : null);
+  }
 
   // Load user's team when user or currentSeason changes
   useEffect(() => {
@@ -29,9 +45,9 @@ export function AuthProvider({ children }) {
   async function initializeApp() {
     try {
       // Fetch current season and auth check in parallel
-      const [seasonData, authResponse] = await Promise.allSettled([
+      const [seasonData, session] = await Promise.allSettled([
         api.getCurrentSeason(),
-        api.getCurrentUser()
+        api.lookupSession()
       ]);
 
       if (seasonData.status === 'fulfilled') {
@@ -40,11 +56,8 @@ export function AuthProvider({ children }) {
         setCurrentSeason(new Date().getFullYear()); // fallback
       }
 
-      if (authResponse.status === 'fulfilled') {
-        setUser(authResponse.value.user);
-      } else {
-        setUser(null);
-      }
+      // lookupSession never rejects; "unavailable" is its answer for a failed check.
+      applySession(session.status === 'fulfilled' ? session.value : { kind: 'unavailable' });
     } catch (error) {
       console.error('Error initializing app:', error);
       setCurrentSeason(new Date().getFullYear());
@@ -106,7 +119,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, userTeamId, teamRosterComplete, refreshUserTeam, currentSeason, refreshSeason }}>
-      {children}
+      {authUnavailable ? <AuthUnavailable /> : children}
     </AuthContext.Provider>
   );
 }
